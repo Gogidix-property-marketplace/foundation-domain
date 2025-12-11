@@ -1,0 +1,15 @@
+# service-discovery
+
+## Overview
+Service part of foundation-domain - shared-infrastructure/nodejs-services
+
+## Technology Stack
+- Language: TBD
+- Framework: TBD
+- Database: TBD
+
+## Configuration
+Configuration files will be added here
+
+## API Endpoints
+Endpoints will be documented here

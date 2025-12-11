@@ -1,0 +1,502 @@
+version: '3.8'
+
+# Production-ready Docker Compose for Node.js Infrastructure Services
+# This file orchestrates all 20 Node.js services with production best practices
+
+networks:
+  gogidix-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  nodejs-logs:
+    driver: local
+  nodejs-cache:
+    driver: local
+
+x-common-variables: &common-variables
+  NODE_ENV: production
+  LOG_LEVEL: info
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+
+x-service-template: &service-template
+  restart: unless-stopped
+  networks:
+    - gogidix-network
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+  healthcheck:
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 40s
+
+services:
+  # Core Infrastructure Services
+  service-discovery:
+    <<: *service-template
+    build:
+      context: ./service-discovery
+      target: production
+    container_name: gogidix-service-discovery
+    ports:
+      - "8761:8761"
+    environment:
+      <<: *common-variables
+      PORT: 8761
+      SERVICE_NAME: service-discovery
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+    depends_on:
+      - consul
+
+  config-sync:
+    <<: *service-template
+    build:
+      context: ./config-sync
+      target: production
+    container_name: gogidix-config-sync
+    ports:
+      - "8888:8888"
+    environment:
+      <<: *common-variables
+      PORT: 8888
+      SERVICE_NAME: config-sync
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-root-token}
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  # API Gateway Services
+  api-gateway-web:
+    <<: *service-template
+    build:
+      context: ./api-gateway-web
+      target: production
+    container_name: gogidix-api-gateway-web
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *common-variables
+      PORT: 8080
+      SERVICE_NAME: api-gateway-web
+      RATE_LIMITING_SERVICE_URL: http://rate-limiting-service:9001
+      AUTH_SERVICE_URL: http://authentication-service:9002
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+    depends_on:
+      - service-discovery
+      - authentication-service
+
+  authentication-service:
+    <<: *service-template
+    build:
+      context: ./authentication-service
+      target: production
+    container_name: gogidix-authentication
+    ports:
+      - "9002:9002"
+    environment:
+      <<: *common-variables
+      PORT: 9002
+      SERVICE_NAME: authentication-service
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      JWT_EXPIRES_IN: 24h
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/gogidix_auth
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+    depends_on:
+      - postgres
+      - redis
+
+  # Web UI Services
+  admin-console:
+    <<: *service-template
+    build:
+      context: ./admin-console
+      target: production
+    container_name: gogidix-admin-console
+    ports:
+      - "3000:3000"
+    environment:
+      <<: *common-variables
+      PORT: 3000
+      SERVICE_NAME: admin-console
+      API_GATEWAY_URL: http://api-gateway-web:8080
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  authentication-web:
+    <<: *service-template
+    build:
+      context: ./authentication-web
+      target: production
+    container_name: gogidix-auth-web
+    ports:
+      - "3100:3100"
+    environment:
+      <<: *common-variables
+      PORT: 3100
+      SERVICE_NAME: authentication-web
+      AUTH_SERVICE_URL: http://authentication-service:9002
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  monitoring-dashboard-web:
+    <<: *service-template
+    build:
+      context: ./monitoring-dashboard-web
+      target: production
+    container_name: gogidix-monitoring-dashboard
+    ports:
+      - "3200:3200"
+    environment:
+      <<: *common-variables
+      PORT: 3200
+      SERVICE_NAME: monitoring-dashboard-web
+      PROMETHEUS_URL: http://prometheus:9090
+      GRAFANA_URL: http://grafana:3000
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  infrastructure-dashboard:
+    <<: *service-template
+    build:
+      context: ./infrastructure-dashboard
+      target: production
+    container_name: gogidix-infra-dashboard
+    ports:
+      - "3300:3300"
+    environment:
+      <<: *common-variables
+      PORT: 3300
+      SERVICE_NAME: infrastructure-dashboard
+      CONSUL_URL: http://consul:8500
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  developer-portal:
+    <<: *service-template
+    build:
+      context: ./developer-portal
+      target: production
+    container_name: gogidix-developer-portal
+    ports:
+      - "3400:3400"
+    environment:
+      <<: *common-variables
+      PORT: 3400
+      SERVICE_NAME: developer-portal
+      API_DOCS_URL: http://api-gateway-web:8080/docs
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  user-portal:
+    <<: *service-template
+    build:
+      context: ./user-portal
+      target: production
+    container_name: gogidix-user-portal
+    ports:
+      - "3500:3500"
+    environment:
+      <<: *common-variables
+      PORT: 3500
+      SERVICE_NAME: user-portal
+      API_GATEWAY_URL: http://api-gateway-web:8080
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  # Operations Services
+  alert-manager:
+    <<: *service-template
+    build:
+      context: ./alert-manager
+      target: production
+    container_name: gogidix-alert-manager
+    ports:
+      - "9003:9003"
+    environment:
+      <<: *common-variables
+      PORT: 9003
+      SERVICE_NAME: alert-manager
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  log-aggregator:
+    <<: *service-template
+    build:
+      context: ./log-aggregator
+      target: production
+    container_name: gogidix-log-aggregator
+    ports:
+      - "9004:9004"
+    environment:
+      <<: *common-variables
+      PORT: 9004
+      SERVICE_NAME: log-aggregator
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+    depends_on:
+      - elasticsearch
+
+  # DevOps Services
+  deployment-service:
+    <<: *service-template
+    build:
+      context: ./deployment-service
+      target: production
+    container_name: gogidix-deployment-service
+    ports:
+      - "9005:9005"
+    environment:
+      <<: *common-variables
+      PORT: 9005
+      SERVICE_NAME: deployment-service
+      KUBECONFIG_PATH: ${KUBECONFIG_PATH}
+      DOCKER_HOST: tcp://docker:2375
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  build-service:
+    <<: *service-template
+    build:
+      context: ./build-service
+      target: production
+    container_name: gogidix-build-service
+    ports:
+      - "9006:9006"
+    environment:
+      <<: *common-variables
+      PORT: 9006
+      SERVICE_NAME: build-service
+      JENKINS_URL: ${JENKINS_URL}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+      - nodejs-cache:/usr/src/app/builds
+
+  devops-orchestrator:
+    <<: *service-template
+    build:
+      context: ./devops-orchestrator
+      target: production
+    container_name: gogidix-devops-orchestrator
+    ports:
+      - "9007:9007"
+    environment:
+      <<: *common-variables
+      PORT: 9007
+      SERVICE_NAME: devops-orchestrator
+      DEPLOYMENT_SERVICE_URL: http://deployment-service:9005
+      BUILD_SERVICE_URL: http://build-service:9006
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  # Security Services
+  security-scan:
+    <<: *service-template
+    build:
+      context: ./security-scan
+      target: production
+    container_name: gogidix-security-scan
+    ports:
+      - "9008:9008"
+    environment:
+      <<: *common-variables
+      PORT: 9008
+      SERVICE_NAME: security-scan
+      SONARQUBE_URL: ${SONARQUBE_URL}
+      OWASP_ZAP_API_KEY: ${OWASP_ZAP_API_KEY}
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  compliance-check:
+    <<: *service-template
+    build:
+      context: ./compliance-check
+      target: production
+    container_name: gogidix-compliance-check
+    ports:
+      - "9009:9009"
+    environment:
+      <<: *common-variables
+      PORT: 9009
+      SERVICE_NAME: compliance-check
+      COMPLIANCE_RULES_PATH: /usr/src/app/rules
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  # Resource Management
+  resource-provisioning:
+    <<: *service-template
+    build:
+      context: ./resource-provisioning
+      target: production
+    container_name: gogidix-resource-provisioning
+    ports:
+      - "9010:9010"
+    environment:
+      <<: *common-variables
+      PORT: 9010
+      SERVICE_NAME: resource-provisioning
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  cost-optimizer:
+    <<: *service-template
+    build:
+      context: ./cost-optimizer
+      target: production
+    container_name: gogidix-cost-optimizer
+    ports:
+      - "9011:9011"
+    environment:
+      <<: *common-variables
+      PORT: 9011
+      SERVICE_NAME: cost-optimizer
+      COST_ANALYTICS_DB: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/cost_analytics
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+
+  # Testing Service
+  test-service:
+    <<: *service-template
+    build:
+      context: ./test-service
+      target: production
+    container_name: gogidix-test-service
+    ports:
+      - "9012:9012"
+    environment:
+      <<: *common-variables
+      PORT: 9012
+      SERVICE_NAME: test-service
+      TEST_RESULTS_PATH: /usr/src/app/test-results
+    volumes:
+      - nodejs-logs:/usr/src/app/logs
+      - nodejs-cache:/usr/src/app/test-results
+
+  # Infrastructure Dependencies
+  postgres:
+    image: postgres:15-alpine
+    container_name: gogidix-postgres
+    restart: unless-stopped
+    networks:
+      - gogidix-network
+    environment:
+      POSTGRES_DB: gogidix
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: gogidix-redis
+    restart: unless-stopped
+    networks:
+      - gogidix-network
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    container_name: gogidix-elasticsearch
+    restart: unless-stopped
+    networks:
+      - gogidix-network
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  consul:
+    image: consul:1.17
+    container_name: gogidix-consul
+    restart: unless-stopped
+    networks:
+      - gogidix-network
+    command: consul agent -dev -ui -client=0.0.0.0
+    volumes:
+      - consul_data:/consul/data
+    ports:
+      - "8500:8500"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  vault:
+    image: vault:1.15
+    container_name: gogidix-vault
+    restart: unless-stopped
+    networks:
+      - gogidix-network
+    environment:
+      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-root-token}
+    command: vault server -dev -dev-listen-address=0.0.0.0:8200
+    volumes:
+      - vault_data:/vault/data
+    ports:
+      - "8200:8200"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  consul_data:
+    driver: local
+  vault_data:
+    driver: local
