@@ -1,0 +1,537 @@
+# Elasticsearch Cluster Deployment for Gogidix Property Marketplace
+# Enterprise-grade centralized logging solution
+
+---
+# Elasticsearch Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elastic-system
+  labels:
+    name: elastic-system
+
+---
+# Elasticsearch Operator
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: elastic-operator
+  namespace: elastic-system
+spec:
+  channel: stable
+  name: elastic-operator-eck
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: elastic-operator.v2.10.0
+
+---
+# Elasticsearch Cluster Configuration
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: gogidix-elasticsearch
+  namespace: elastic-system
+spec:
+  version: 8.11.3
+  nodeSets:
+  - name: master-nodes
+    count: 3
+    config:
+      node.roles: ["master"]
+      node.store.allow_mmap: false
+      cluster.initial_master_nodes: "es-master-0,es-master-1,es-master-2"
+      cluster.remote.connect.enabled: "true"
+      xpack.security.enabled: "true"
+      xpack.security.audit.enabled: "true"
+      xpack.security.transport.ssl.enabled: "true"
+      xpack.security.http.ssl.enabled: "true"
+      xpack.monitoring.collection.enabled: "true"
+      xpack.ml.enabled: "false"
+    podTemplate:
+      spec:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: gogidix-elasticsearch
+                  elasticsearch.k8s.elastic.co/node-set: master-nodes
+              topologyKey: kubernetes.io/hostname
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 4
+              memory: 8Gi
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms3g -Xmx3g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+
+  - name: data-nodes
+    count: 6
+    config:
+      node.roles: ["data", "ingest"]
+      node.store.allow_mmap: false
+      xpack.searchable.snapshot.shared_cache.size: "30%"
+      xpack.searchable.snapshot.auto_rollover.enabled: "true"
+      indices.lifecycle.poll_interval: "1m"
+    podTemplate:
+      spec:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: gogidix-elasticsearch
+                    elasticsearch.k8s.elastic.co/node-set: data-nodes
+                topologyKey: kubernetes.io/hostname
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 4
+              memory: 16Gi
+            limits:
+              cpu: 8
+              memory: 32Gi
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms12g -Xmx12g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+          volumeMounts:
+          - name: elasticsearch-data
+            mountPath: /usr/share/elasticsearch/data
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 500Gi
+
+  - name: coordinating-nodes
+    count: 3
+    config:
+      node.roles: []
+      node.store.allow_mmap: false
+      xpack.search.remote.connections_per_cluster: "10"
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 2
+              memory: 8Gi
+            limits:
+              cpu: 4
+              memory: 16Gi
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms6g -Xmx6g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+  # HTTP Configuration
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+
+  # Security Configuration
+  secureSettings:
+  - secretName: elastic-credentials
+
+---
+# Elasticsearch Secret for Credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elastic-credentials
+  namespace: elastic-system
+type: Opaque
+data:
+  username: ZWxhc3RpYw==  # elastic
+  password: Z29naWRpeDEyMw==  # gogidix123
+
+---
+# Kibana Configuration
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: gogidix-kibana
+  namespace: elastic-system
+spec:
+  version: 8.11.3
+  count: 2
+  elasticsearchRef:
+    name: gogidix-elasticsearch
+  config:
+    xpack.security.enabled: "true"
+    xpack.encryptedSavedObjects.encryptionKey: "gogidix-encryption-key-32-characters-long"
+    xpack.reporting.csv.maxSizeBytes: "10485760"
+    xpack.search.timeout: "60s"
+    server.basePath: "/kibana"
+    server.rewriteBasePath: "true"
+    xpack.security.session.timeout: "86400000"  # 24 hours
+    logging.timezone: "UTC"
+    xpack.ingestManager.fleet.agents.poll_timeout: "90s"
+    xpack.fleet.agents.elasticsearch.hosts: '["https://gogidix-elasticsearch:9200"]'
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            cpu: 1
+            memory: 2Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        env:
+        - name: NODE_OPTIONS
+          value: "--max-old-space-size=3072"
+
+---
+# Logstash Configuration
+apiVersion: logstash.k8s.elastic.co/v1beta1
+kind: Logstash
+metadata:
+  name: gogidix-logstash
+  namespace: elastic-system
+spec:
+  version: 8.11.3
+  count: 3
+  elasticsearchRef:
+    name: gogidix-elasticsearch
+  config:
+    pipeline.workers: 8
+    pipeline.batch.size: 500
+    pipeline.batch.delay: 10
+    queue.type: persisted
+    queue.max_bytes: 4gb
+    queue.checkpoint.writes: 1024
+    path.data: /usr/share/logstash/data
+  monitoring:
+    enabled: true
+    elasticsearch:
+      hosts: ["https://gogidix-elasticsearch:9200"]
+  podTemplate:
+    spec:
+      containers:
+      - name: logstash
+        resources:
+          requests:
+            cpu: 2
+            memory: 4Gi
+          limits:
+            cpu: 4
+            memory: 8Gi
+        env:
+        - name: LS_JAVA_OPTS
+          value: "-Xms3g -Xmx3g -XX:+UseG1GC"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/logstash/pipeline
+        - name: data-volume
+          mountPath: /usr/share/logstash/data
+      volumes:
+      - name: config-volume
+        configMap:
+          name: logstash-config
+      - name: data-volume
+        emptyDir: {}
+  pipelines:
+    - pipeline.id: main
+      path: "/usr/share/logstash/pipeline/logstash.conf"
+      pipeline.workers: 3
+      pipeline.batch.size: 250
+
+---
+# Logstash Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: elastic-system
+data:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+        host => "0.0.0.0"
+      }
+
+      http {
+        port => 8080
+        codec => "json"
+      }
+    }
+
+    filter {
+      # Parse timestamp
+      if [timestamp] {
+        date {
+          match => [ "timestamp", "ISO8601" ]
+        }
+      } else if [@timestamp] {
+        mutate {
+          replace => { "[@timestamp]" => "%{+yyyy-MM-dd'T'HH:mm:ss.SSSZ}" }
+        }
+      }
+
+      # Add Kubernetes metadata
+      if [kubernetes] {
+        mutate {
+          add_field => {
+            "kubernetes_namespace" => "%{[kubernetes][namespace]}"
+            "kubernetes_pod_name" => "%{[kubernetes][pod][name]}"
+            "kubernetes_pod_ip" => "%{[kubernetes][pod][ip]}"
+            "kubernetes_container_name" => "%{[kubernetes][container][name]}"
+          }
+        }
+      }
+
+      # Parse JSON logs if needed
+      if [message] and [message] =~ /^\{.*\}$/ {
+        json {
+          source => "message"
+          target => "parsed_json"
+        }
+      }
+
+      # Parse application logs
+      if [service] or [application] {
+        mutate {
+          add_field => { "log_type" => "application" }
+        }
+      } else if [kubernetes] {
+        mutate {
+          add_field => { "log_type" => "kubernetes" }
+        }
+      }
+
+      # Add environment
+      mutate {
+        add_field => { "environment" => "production" }
+      }
+
+      # Cleanup fields
+      mutate {
+        remove_field => [ "agent", "ecs", "host", "input" ]
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["https://gogidix-elasticsearch:9200"]
+        user => "elastic"
+        password => "gogidix123"
+        index => "gogidix-logs-%{+YYYY.MM.dd}"
+        template_name => "gogidix-logs"
+        template_pattern => "gogidix-logs-*"
+        template => {
+          "index_patterns" => ["gogidix-logs-*"],
+          "settings" => {
+            "number_of_shards" => 3,
+            "number_of_replicas" => 1,
+            "index.lifecycle.name" => "gogidix-logs-policy",
+            "index.lifecycle.rollover_alias" => "gogidix-logs"
+          },
+          "mappings" => {
+            "properties" => {
+              "@timestamp" => { "type" => "date" },
+              "level" => { "type" => "keyword" },
+              "message" => { "type" => "text", "analyzer" => "standard" },
+              "service" => { "type" => "keyword" },
+              "trace_id" => { "type" => "keyword" },
+              "span_id" => { "type" => "keyword" },
+              "user_id" => { "type" => "keyword" },
+              "request_id" => { "type" => "keyword" },
+              "environment" => { "type" => "keyword" },
+              "log_type" => { "type" => "keyword" }
+            }
+          }
+        }
+      }
+    }
+
+---
+# Filebeat Configuration for Log Collection
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: kube-system
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/containers/*.log
+      processors:
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+        - decode_json_fields:
+            fields: ["message"]
+            target: ""
+            overwrite_keys: true
+
+    # Add cloud metadata
+    cloud.id: "${ELASTIC_CLOUD_ID}"
+    cloud.auth: "${ELASTIC_CLOUD_AUTH}"
+
+    # Output to Elasticsearch
+    output.elasticsearch:
+      hosts: ["https://gogidix-elasticsearch.elastic-system:9200"]
+      username: elastic
+      password: gogidix123
+      ssl.verification_mode: none
+      index: "gogidix-kubernetes-%{+yyyy.MM.dd}"
+      template.name: "gogidix-kubernetes"
+      template.pattern: "gogidix-kubernetes-*"
+      template.settings:
+        index.number_of_shards: 3
+        index.number_of_replicas: 1
+
+    # Logging level
+    logging.level: info
+    logging.to_files: true
+    logging.files:
+      path: /var/log/filebeat
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+
+---
+# Filebeat DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+spec:
+  selector:
+    matchLabels:
+      k8s-app: filebeat
+  template:
+    metadata:
+      labels:
+        k8s-app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:8.11.3
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          runAsUser: 0
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate
+
+---
+# Elasticsearch Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elasticsearch
+  namespace: elastic-system
+
+---
+# Elasticsearch Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elasticsearch
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/stats
+  - nodes/metrics
+  - pods
+  - services
+  - endpoints
+  verbs: ["get", "list", "watch"]
+
+---
+# Elasticsearch Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elasticsearch
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elasticsearch
+subjects:
+- kind: ServiceAccount
+  name: elasticsearch
+  namespace: elastic-system
+
+---
+# Index Lifecycle Management Policy
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: ElasticsearchUser
+metadata:
+  name: kibana_system
+  namespace: elastic-system

@@ -1,0 +1,255 @@
+version: '3.8'
+
+# Local Development Environment with Central Configuration Services
+# Add these services to your existing docker-compose.yml
+
+services:
+  # Config Server
+  config-server:
+    build:
+      context: ../../java-services/config-server
+      dockerfile: Dockerfile
+    hostname: config-server
+    ports:
+      - "8007:8007"
+    environment:
+      SPRING_PROFILES_ACTIVE: native,dev
+      CONFIG_SERVER_USER: config-admin
+      CONFIG_SERVER_PASSWORD: config-secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+    depends_on:
+      - redis
+      - rabbitmq
+    volumes:
+      - ./config-server/config-repo:/app/config-repo
+      - ./logs/config-server:/app/logs
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Eureka Server
+  eureka-server:
+    build:
+      context: ../../java-services/eureka-server
+      dockerfile: Dockerfile
+    hostname: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      EUREKA_HOSTNAME: eureka-server
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+    volumes:
+      - ./logs/eureka-server:/app/logs
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Zipkin Server (Alternative to Jaeger)
+  zipkin-server:
+    build:
+      context: ../../java-services/zipkin-server
+      dockerfile: Dockerfile
+    hostname: zipkin-server
+    ports:
+      - "9411:9411"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: gogidix
+      RABBITMQ_PASSWORD: gogidix123
+    depends_on:
+      - elasticsearch
+      - rabbitmq
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9411/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Update API Gateway with Config and Discovery
+  api-gateway:
+    build:
+      context: ../../java-services/api-gateway
+      dockerfile: Dockerfile
+    hostname: api-gateway
+    ports:
+      - "8080:8080"
+      - "8081:8081"  # Management port
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-admin:config-secret@config-server:8007/config
+      SPRING_CLOUD_CONFIG_FAIL_FAST: true
+      # Service Discovery
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      # Other dependencies
+      SPRING_CLOUD_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gogidix_property
+      SPRING_DATASOURCE_USERNAME: gogidix_admin
+      SPRING_DATASOURCE_PASSWORD: gogidix123
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: gogidix123
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Tracing
+      SPRING_ZIPKIN_BASE_URL: http://zipkin-server:9411
+      SPRING_SLEUTH_SAMPLER_PROBABILITY: 0.1
+      # Config Refresh
+      SPRING_CLOUD_BUS_ENABLED: true
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: gogidix
+      SPRING_RABBITMQ_PASSWORD: gogidix123
+    depends_on:
+      - config-server
+      - eureka-server
+      - zipkin-server
+      - kafka
+      - postgres
+      - redis
+      - vault
+      - rabbitmq
+    volumes:
+      - ./logs/api-gateway:/app/logs
+    networks:
+      - gogidix-network
+
+  # Update Property Service with Config and Discovery
+  property-service:
+    build:
+      context: ../../java-services/property-service
+      dockerfile: Dockerfile
+    hostname: property-service
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-admin:config-secret@config-server:8007/config
+      # Service Discovery
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      # Other dependencies
+      SPRING_CLOUD_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gogidix_property
+      SPRING_DATASOURCE_USERNAME: gogidix_admin
+      SPRING_DATASOURCE_PASSWORD: gogidix123
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Tracing
+      SPRING_ZIPKIN_BASE_URL: http://zipkin-server:9411
+      # Config Refresh
+      SPRING_CLOUD_BUS_ENABLED: true
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      - config-server
+      - eureka-server
+      - kafka
+      - postgres
+      - vault
+      - rabbitmq
+    volumes:
+      - ./logs/property-service:/app/logs
+    networks:
+      - gogidix-network
+
+  # Update User Service with Config and Discovery
+  user-service:
+    build:
+      context: ../../java-services/user-service
+      dockerfile: Dockerfile
+    hostname: user-service
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-admin:config-secret@config-server:8007/config
+      # Service Discovery
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      # Other dependencies
+      SPRING_CLOUD_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gogidix_property
+      SPRING_DATASOURCE_USERNAME: gogidix_admin
+      SPRING_DATASOURCE_PASSWORD: gogidix123
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Tracing
+      SPRING_ZIPKIN_BASE_URL: http://zipkin-server:9411
+      # Config Refresh
+      SPRING_CLOUD_BUS_ENABLED: true
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      - config-server
+      - eureka-server
+      - kafka
+      - postgres
+      - vault
+      - rabbitmq
+    volumes:
+      - ./logs/user-service:/app/logs
+    networks:
+      - gogidix-network
+
+  # Update Payment Service with Config and Discovery
+  payment-service:
+    build:
+      context: ../../java-services/payment-service
+      dockerfile: Dockerfile
+    hostname: payment-service
+    ports:
+      - "8084:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # Config Server
+      SPRING_CLOUD_CONFIG_URI: http://config-admin:config-secret@config-server:8007/config
+      # Service Discovery
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      # Other dependencies
+      SPRING_CLOUD_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gogidix_property
+      SPRING_DATASOURCE_USERNAME: gogidix_admin
+      SPRING_DATASOURCE_PASSWORD: gogidix123
+      STRIPE_SECRET_KEY: sk_test_51234567890abcdef
+      PAYPAL_MODE: sandbox
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Tracing
+      SPRING_ZIPKIN_BASE_URL: http://zipkin-server:9411
+      # Config Refresh
+      SPRING_CLOUD_BUS_ENABLED: true
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      - config-server
+      - eureka-server
+      - kafka
+      - postgres
+      - vault
+      - rabbitmq
+    volumes:
+      - ./logs/payment-service:/app/logs
+    networks:
+      - gogidix-network
+
+# Networks
+networks:
+  gogidix-network:
+    external: true

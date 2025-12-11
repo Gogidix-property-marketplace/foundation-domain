@@ -1,0 +1,379 @@
+version: '3.8'
+
+services:
+  # Database Services
+  mongodb:
+    image: mongo:6.0
+    container_name: gogidix-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: gogidix_ai
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: gogidix-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis123
+    volumes:
+      - redis_data:/data
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+
+  # Core AI Services
+  predictive-analytics-service:
+    build: ./backend-services/python-services/predictive-analytics-service
+    container_name: predictive-analytics-service
+    ports:
+      - "9000:9000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+      - REDIS_URL=redis://:redis123@redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  recommendation-service:
+    build: ./backend-services/python-services/recommendation-service
+    container_name: recommendation-service
+    ports:
+      - "9010:9010"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+      - REDIS_URL=redis://:redis123@redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  fraud-detection-service:
+    build: ./backend-services/python-services/fraud-detection-service
+    container_name: fraud-detection-service
+    ports:
+      - "9040:9040"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+      - REDIS_URL=redis://:redis123@redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9040/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Computer Vision Services
+  computer-vision-service:
+    build: ./backend-services/python-services/computer-vision-service
+    container_name: computer-vision-service
+    ports:
+      - "9039:9039"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9039/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  image-recognition-service:
+    build: ./backend-services/python-services/image-recognition-service
+    container_name: image-recognition-service
+    ports:
+      - "9040:9040"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9040/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  face-recognition-service:
+    build: ./backend-services/python-services/face-recognition-service
+    container_name: face-recognition-service
+    ports:
+      - "9022:9022"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9022/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NLP Services
+  nlp-processing-service:
+    build: ./backend-services/python-services/nlp-processing-service
+    container_name: nlp-processing-service
+    ports:
+      - "9041:9041"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9041/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  translation-service:
+    build: ./backend-services/python-services/translation-service
+    container_name: translation-service
+    ports:
+      - "9042:9042"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9042/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  sentiment-analysis-service:
+    build: ./backend-services/python-services/sentiment-analysis-service
+    container_name: sentiment-analysis-service
+    ports:
+      - "9043:9043"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9043/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Speech Services
+  speech-recognition-service:
+    build: ./backend-services/python-services/speech-recognition-service
+    container_name: speech-recognition-service
+    ports:
+      - "9044:9044"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9044/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ML Training Services
+  ai-training-service:
+    build: ./backend-services/python-services/ai-training-service
+    container_name: ai-training-service
+    ports:
+      - "9045:9045"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9045/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Business Intelligence
+  bi-analytics-service:
+    build: ./backend-services/python-services/bi-analytics-service
+    container_name: bi-analytics-service
+    ports:
+      - "9027:9027"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9027/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Platform Integration
+  unified-api-gateway:
+    build: ./backend-services/python-services/unified-api-gateway
+    container_name: unified-api-gateway
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://:redis123@redis:6379
+    depends_on:
+      - redis
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  management-domain-integration:
+    build: ./backend-services/python-services/management-domain-integration
+    container_name: management-domain-integration
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/gogidix_ai
+    depends_on:
+      - mongodb
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - unified-api-gateway
+    networks:
+      - gogidix-ai-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  gogidix-ai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

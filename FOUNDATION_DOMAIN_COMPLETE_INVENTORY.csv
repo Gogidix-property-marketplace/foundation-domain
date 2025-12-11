@@ -1,0 +1,12 @@
+Domain,Sub-Domain,Tech Stack,Services Count,Files Count,Status,Deployment Date,CI/CD URL
+Shared Libraries,backend-services/java-services,Java,12,1046,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+Central Configuration,backend-services/java-services,Java,11,140,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+Centralized Dashboard,backend-services/java-services,Java,9,880,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+Centralized Dashboard,backend-services/nodejs-services,Node.js,9,43,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+Shared Infrastructure,backend-services/java-services,Java,82,4092,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+Shared Infrastructure,backend-services/nodejs-services,Node.js,32,176,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+AI Services,backend-services/java-services,Java,81,3035,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+AI Services,backend-services/nodejs-services,Node.js,10,135,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+AI Services,backend-services/python-services,Python,50,207,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+AI Services,frontend-dashboard,Next.js,1,35,✅ Deployed,2025-12-11,https://github.com/Gogidix-property-marketplace/foundation-domain/actions
+,,,Total,,,,,306,9,789,,

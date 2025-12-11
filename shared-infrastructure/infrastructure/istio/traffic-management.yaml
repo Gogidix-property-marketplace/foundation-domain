@@ -1,0 +1,440 @@
+# Istio Traffic Management Configuration
+# Implements canary deployments, traffic splitting, and routing strategies
+
+---
+# Virtual Service for API Gateway with Traffic Splitting
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: api-gateway
+  namespace: api-gateway
+spec:
+  hosts:
+  - "api.gogidix.com"
+  gateways:
+  - gogidix-gateway
+  http:
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: api-gateway
+        subset: v2
+      weight: 100
+  - route:
+    - destination:
+        host: api-gateway
+        subset: v1
+      weight: 90
+    - destination:
+        host: api-gateway
+        subset: v2
+      weight: 10
+
+---
+# Destination Rule for API Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: api-gateway
+  namespace: api-gateway
+spec:
+  host: api-gateway
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+    circuitBreaker:
+      consecutiveErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+      connectionPool:
+        tcp:
+          maxConnections: 200
+        http:
+          http1MaxPendingRequests: 100
+          maxRequestsPerConnection: 20
+
+---
+# Virtual Service for Property Service with Weighted Routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: property-service
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - property-service
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/properties/search"
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+    route:
+    - destination:
+        host: property-service
+        subset: v1
+      weight: 100
+  - match:
+    - uri:
+        prefix: "/api/v1/properties/premium"
+    route:
+    - destination:
+        host: property-service
+        subset: premium
+      weight: 100
+  - route:
+    - destination:
+        host: property-service
+        subset: v1
+      weight: 85
+    - destination:
+        host: property-service
+        subset: v2
+      weight: 15
+
+---
+# Destination Rule for Property Service
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: property-service
+  namespace: gogidix-workloads
+spec:
+  host: property-service
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        httpHeaderName: "x-user-id"
+    connectionPool:
+      tcp:
+        maxConnections: 150
+      http:
+        http1MaxPendingRequests: 75
+        maxRequestsPerConnection: 15
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 40
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: RANDOM
+  - name: premium
+    labels:
+      tier: premium
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 300
+        http:
+          http1MaxPendingRequests: 150
+          maxRequestsPerConnection: 30
+
+---
+# Virtual Service for User Service with Mirroring
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: user-service
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - user-service
+  http:
+  - match:
+    - uri:
+        regex: "^/api/v1/users/[^/]+/profile$"
+    rewrite:
+      uri: "/api/v2/user/profile"
+    route:
+    - destination:
+        host: user-service
+        subset: v1
+      weight: 100
+    mirror:
+      host: user-service
+      subset: v2
+      port:
+        number: 8080
+    mirrorPercentage:
+      value: 100
+  - match:
+    - uri:
+        prefix: "/api/v1/users"
+    route:
+    - destination:
+        host: user-service
+        subset: v1
+      weight: 100
+
+---
+# Destination Rule for User Service
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: user-service
+  namespace: gogidix-workloads
+spec:
+  host: user-service
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+
+---
+# Virtual Service for Payment Service with A/B Testing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: payment-service
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - payment-service
+  http:
+  - match:
+    - headers:
+        x-experiment:
+          exact: "new-checkout-flow"
+    route:
+    - destination:
+        host: payment-service
+        subset: experiment
+      weight: 100
+  - match:
+    - uri:
+        exact: "/api/v1/payments/process"
+    route:
+    - destination:
+        host: payment-service
+        subset: stable
+      weight: 70
+    - destination:
+        host: payment-service
+        subset: experiment
+      weight: 30
+  - route:
+    - destination:
+        host: payment-service
+        subset: stable
+      weight: 100
+
+---
+# Destination Rule for Payment Service
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: payment-service
+  namespace: gogidix-workloads
+spec:
+  host: payment-service
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        httpCookie:
+          name: "session_id"
+          ttl: 0s
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 25
+        maxRequestsPerConnection: 5
+    circuitBreaker:
+      consecutiveErrors: 2
+      interval: 15s
+      baseEjectionTime: 60s
+  subsets:
+  - name: stable
+    labels:
+      version: v1
+  - name: experiment
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 15s
+
+---
+# Service Entry for External Dependencies
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: stripe-external
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - "api.stripe.com"
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+  exportTo:
+  - "payment-service"
+
+---
+# Service Entry for External Auth
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: auth-external
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - "auth.gogidix.com"
+  - "keycloak.gogidix.com"
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+  location: MESH_EXTERNAL
+  exportTo:
+  - "*"
+
+---
+# Gateway Configuration for Multi-Cluster
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: cross-cluster-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: eastwestgateway
+  servers:
+  - port:
+      number: 15443
+      name: tls
+      protocol: TLS
+    tls:
+      mode: AUTO_PASSTHROUGH
+    hosts:
+    - "*.local"
+    - "*.gogidix.com"
+
+---
+# Virtual Service for Cross-Cluster Traffic
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: cross-cluster-vs
+  namespace: istio-system
+spec:
+  hosts:
+  - "property-service.gogidix.svc.cluster.local"
+  - "user-service.gogidix.svc.cluster.local"
+  gateways:
+  - mesh
+  - cross-cluster-gateway
+  http:
+  - match:
+    - gateways:
+      - mesh
+      port: 8080
+    route:
+    - destination:
+        host: property-service.gogidix.svc.cluster.local
+        port:
+          number: 8080
+  - match:
+    - gateways:
+      - cross-cluster-gateway
+      port: 15443
+    route:
+    - destination:
+        host: property-service.gogidix.svc.cluster.local
+        port:
+          number: 8080
+  - fault:
+      delay:
+        percentage:
+          value: 0.5
+        fixedDelay: 2s
+    route:
+    - destination:
+        host: property-service.gogidix.svc.cluster.local
+        port:
+          number: 8080
+
+---
+# Retry and Timeout Configuration
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: timeout-retry-config
+  namespace: gogidix-workloads
+spec:
+  hosts:
+  - "property-service"
+  - "user-service"
+  - "payment-service"
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/"
+  timeout: 10s
+  retries:
+    attempts: 3
+    perTryTimeout: 3s
+    retryOn: "5xx,gateway-error,connect-failure,refused-stream"
+  route:
+  - destination:
+      host: property-service
+  - destination:
+      host: user-service
+  - destination:
+      host: payment-service

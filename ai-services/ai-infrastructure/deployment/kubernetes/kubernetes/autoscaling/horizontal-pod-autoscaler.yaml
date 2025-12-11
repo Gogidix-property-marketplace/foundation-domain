@@ -1,0 +1,388 @@
+# Horizontal Pod Autoscaler Configuration
+# Enables automatic scaling of AI services based on CPU and custom metrics
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-gateway-hpa
+  namespace: gogidix-ai
+  labels:
+    app: ai-gateway
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-gateway
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "500"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 5
+          periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: property-intelligence-hpa
+  namespace: gogidix-ai
+  labels:
+    app: property-intelligence
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: property-intelligence
+  minReplicas: 3
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 85
+    - type: Pods
+      pods:
+        metric:
+          name: inference_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "100"
+    - type: External
+      external:
+        metric:
+          name: gpu_utilization_percentage
+        target:
+          type: AverageValue
+          averageValue: "85"
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: conversational-ai-hpa
+  namespace: gogidix-ai
+  labels:
+    app: conversational-ai
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: conversational-ai
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: active_conversations
+        target:
+          type: AverageValue
+          averageValue: "50"
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: analytics-hpa
+  namespace: gogidix-ai
+  labels:
+    app: analytics
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: analytics
+  minReplicas: 2
+  maxReplicas: 15
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: events_processed_per_second
+        target:
+          type: AverageValue
+          averageValue: "1000"
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ml-platform-hpa
+  namespace: gogidix-ai
+  labels:
+    app: ml-platform
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ml-platform
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 85
+    - type: Pods
+      pods:
+        metric:
+          name: training_jobs_running
+        target:
+          type: AverageValue
+          averageValue: "2"
+
+---
+# Custom Metrics Configuration
+# These metrics are collected by Prometheus and exposed to the HPA controller
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hpa-metrics-config
+  namespace: gogidix-ai
+data:
+  config.yaml: |
+    rules:
+      - pattern: 'http_requests_total{service="ai-gateway"}'
+        name: http_requests_per_second
+        type: Rate
+        interval: 30s
+
+      - pattern: 'inference_requests_total{service="property-intelligence"}'
+        name: inference_requests_per_second
+        type: Rate
+        interval: 30s
+
+      - pattern: 'gpu_utilization_percentage{node=~".*"}'
+        name: gpu_utilization_percentage
+        type: Gauge
+        interval: 10s
+
+      - pattern: 'active_conversations_total{service="conversational-ai"}'
+        name: active_conversations
+        type: Gauge
+        interval: 10s
+
+      - pattern: 'events_processed_total{service="analytics"}'
+        name: events_processed_per_second
+        type: Rate
+        interval: 30s
+
+      - pattern: 'training_jobs_running{service="ml-platform"}'
+        name: training_jobs_running
+        type: Gauge
+        interval: 10s
+
+---
+# Prometheus Adapter Configuration
+# Exposes Prometheus metrics to Kubernetes autoscaling
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-adapter
+  namespace: gogidix-ai
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-adapter
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources: ["thirdpartyresources", "customresourcedefinitions"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-adapter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-adapter
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-adapter
+    namespace: gogidix-ai
+
+---
+# VPA Configuration for Vertical Autoscaling
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ai-gateway-vpa
+  namespace: gogidix-ai
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-gateway
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: ai-gateway
+        maxAllowed:
+          cpu: 4
+          memory: 8Gi
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: property-intelligence-vpa
+  namespace: gogidix-ai
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: property-intelligence
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: property-intelligence
+        maxAllowed:
+          cpu: 8
+          memory: 16Gi
+          nvidia.com/gpu: 1
+        minAllowed:
+          cpu: 500m
+          memory: 1Gi
+
+---
+# Cluster Autoscaler Configuration
+# For automatic node scaling in cloud environments
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        app: cluster-autoscaler
+    spec:
+      containers:
+        - image: k8s.gcr.io/autoscaling/cluster-autoscaler:v1.24.0
+          name: cluster-autoscaler
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          command:
+            - ./cluster-autoscaler
+            - --v=4
+            - --stderrthreshold=info
+            - --cloud-provider=aws
+            - --skip-nodes-with-local-storage=false
+            - --expander=least-waste
+            - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/gogidix-ai
+            - --balance-similar-node-groups
+            - --skip-nodes-with-system-pods=false
+          env:
+            - name: AWS_REGION
+              value: us-east-1

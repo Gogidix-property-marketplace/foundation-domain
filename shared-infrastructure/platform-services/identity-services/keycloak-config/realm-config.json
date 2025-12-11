@@ -1,0 +1,536 @@
+{
+  "id": "gogidix-property",
+  "realm": "gogidix-property",
+  "displayName": "Gogidix Property Marketplace",
+  "enabled": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "roles": {
+    "realm": [
+      {
+        "id": "admin-role",
+        "name": "admin",
+        "description": "System administrator with full access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "gogidix-property"
+      },
+      {
+        "id": "agent-role",
+        "name": "agent",
+        "description": "Real estate agent with property management access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "gogidix-property"
+      },
+      {
+        "id": "owner-role",
+        "name": "owner",
+        "description": "Property owner with listing management access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "gogidix-property"
+      },
+      {
+        "id": "user-role",
+        "name": "user",
+        "description": "Regular user with browsing and booking access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "gogidix-property"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "gogidix-frontend",
+      "name": "Gogidix Frontend Application",
+      "description": "Frontend web application for property marketplace",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${env.GOGIDIX_FRONTEND_SECRET}",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://app.gogidix.com/*",
+        "https://gogidix.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://app.gogidix.com",
+        "https://gogidix.com"
+      ],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "saml.assertion.signature": "RSA_SHA256",
+        "saml.multivalued.roles": "false",
+        "saml.force.post.binding": "false",
+        "saml.encrypt": "false",
+        "saml.server.signature": "false",
+        "saml.server.signature.keyinfo.ext": "false",
+        "exclude.session.state.from.auth.response": "false",
+        "saml_force_name_id_format_attribute": "false",
+        "saml.client.signature": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "saml.authnstatement": "false",
+        "display.on.consent.screen": "false",
+        "saml.onetimeuse.condition": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "api-gateway",
+      "name": "API Gateway",
+      "description": "Backend API Gateway service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${env.API_GATEWAY_SECRET}",
+      "redirectUris": [
+        "http://localhost:8080/*",
+        "https://api.gogidix.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080",
+        "https://api.gogidix.com"
+      ],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": false,
+      "bearerOnly": false,
+      "attributes": {
+        "saml.assertion.signature": "RSA_SHA256",
+        "saml.multivalued.roles": "false",
+        "saml.force.post.binding": "false",
+        "saml.encrypt": "false",
+        "saml.server.signature": "false",
+        "saml.server.signature.keyinfo.ext": "false",
+        "exclude.session.state.from.auth.response": "false",
+        "saml_force_name_id_format_attribute": "false",
+        "saml.client.signature": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "saml.authnstatement": "false",
+        "display.on.consent.screen": "false",
+        "saml.onetimeuse.condition": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "property-service",
+      "name": "Property Service",
+      "description": "Property management microservice",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${env.PROPERTY_SERVICE_SECRET}",
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": false,
+      "bearerOnly": true,
+      "attributes": {
+        "saml.assertion.signature": "RSA_SHA256"
+      }
+    },
+    {
+      "clientId": "user-service",
+      "name": "User Service",
+      "description": "User management microservice",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${env.USER_SERVICE_SECRET}",
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": false,
+      "bearerOnly": true,
+      "attributes": {
+        "saml.assertion.signature": "RSA_SHA256"
+      }
+    },
+    {
+      "clientId": "payment-service",
+      "name": "Payment Service",
+      "description": "Payment processing microservice",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${env.PAYMENT_SERVICE_SECRET}",
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": false,
+      "bearerOnly": true,
+      "attributes": {
+        "saml.assertion.signature": "RSA_SHA256"
+      }
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "google",
+      "displayName": "Google",
+      "providerId": "google",
+      "enabled": true,
+      "updateProfileFirstLoginMode": "on",
+      "trustEmail": true,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "authenticateByDefault": false,
+      "linkOnly": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${env.GOOGLE_CLIENT_ID}",
+        "clientSecret": "${env.GOOGLE_CLIENT_SECRET}",
+        "hostedDomain": "",
+        "useJwksUrl": true
+      }
+    },
+    {
+      "alias": "facebook",
+      "displayName": "Facebook",
+      "providerId": "facebook",
+      "enabled": true,
+      "updateProfileFirstLoginMode": "on",
+      "trustEmail": false,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "authenticateByDefault": false,
+      "linkOnly": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${env.FACEBOOK_CLIENT_ID}",
+        "clientSecret": "${env.FACEBOOK_CLIENT_SECRET}",
+        "defaultScope": "email",
+        "jwksUrl": "",
+        "useJwksUrl": false
+      }
+    }
+  ],
+  "userFederationProviders": [],
+  "scopeMappings": [
+    {
+      "clientScope": "email",
+      "roles": []
+    },
+    {
+      "clientScope": "profile",
+      "roles": []
+    },
+    {
+      "clientScope": "roles",
+      "roles": [
+        "admin",
+        "agent",
+        "owner",
+        "user"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "id": "user-profile",
+        "providerId": "user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.configured": [
+            "true"
+          ],
+          "kc.user.profile.unmanaged.attribute.policy": [
+            "ENABLED"
+          ],
+          "kc.user.profile.attributes": [
+            "{\"attributes\":[{\"name\":\"firstName\",\"required\":true},{\"name\":\"lastName\",\"required\":true},{\"name\":\"email\",\"required\":true,\"validations\":{\"email\":{\"should-exist-if-empty\":true}}},{\"name\":\"phone\",\"required\":false},{\"name\":\"jobTitle\",\"required\":false},{\"name\":\"company\",\"required\":false},{\"name\":\"bio\",\"required\":false},{\"name\":\"profileImage\",\"required\":false}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "requiredActions": [
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "verification-email",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "update-password",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "totp-setup",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    }
+  ],
+  "browserFlow": {
+    "id": "browser",
+    "alias": "browser",
+    "description": "browser based authentication",
+    "providerId": "basic-flow",
+    "topLevel": true,
+    "builtIn": true,
+    "authenticationExecutions": [
+      {
+        "authenticator": "auth-cookie",
+        "authenticatorFlow": false,
+        "requirement": "ALTERNATIVE",
+        "priority": 10,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      },
+      {
+        "authenticator": "identity-provider-redirector",
+        "authenticatorFlow": false,
+        "requirement": "ALTERNATIVE",
+        "priority": 25,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      },
+      {
+        "authenticator": "auth-spnego",
+        "authenticatorFlow": false,
+        "requirement": "DISABLED",
+        "priority": 30,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      },
+      {
+        "authenticator": "identity-provider-redirector",
+        "authenticatorFlow": false,
+        "requirement": "ALTERNATIVE",
+        "priority": 40,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false,
+        "flowAlias": "Social"
+      },
+      {
+        "authenticator": "auth-username-password-form",
+        "authenticatorFlow": false,
+        "requirement": "ALTERNATIVE",
+        "priority": 50,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      },
+      {
+        "authenticator": "recaptcha",
+        "authenticatorFlow": false,
+        "requirement": "DISABLED",
+        "priority": 60,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      }
+    ]
+  },
+  "directGrantFlow": {
+    "id": "direct grant",
+    "alias": "direct grant",
+    "description": "OpenID Connect Resource Owner Grant Credentials",
+    "providerId": "basic-flow",
+    "topLevel": true,
+    "builtIn": true,
+    "authenticationExecutions": [
+      {
+        "authenticator": "direct-grant-validate-username",
+        "authenticatorFlow": false,
+        "requirement": "REQUIRED",
+        "priority": 10,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      },
+      {
+        "authenticator": "direct-grant-validate-password",
+        "authenticatorFlow": false,
+        "requirement": "REQUIRED",
+        "priority": 20,
+        "userSetupAllowed": false,
+        "autheticatorFlow": false
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "email",
+      "description": "OpenID Connect built-in scope: email",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${emailScopeConsentText}",
+        "display.on.consent.screen.text": "${emailScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "email verified",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "emailVerified",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email_verified",
+            "jsonType.label": "boolean"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "description": "OpenID Connect built-in scope: profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${profileScopeConsentText}",
+        "display.on.consent.screen.text": "${profileScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "description": "OpenID Connect scope for add user roles to the access token",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${rolesScopeConsentText}",
+        "display.on.consent.screen.text": "${rolesScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "email",
+    "profile",
+    "roles"
+  ],
+  "defaultOptionalClientScopes": [
+    "address",
+    "microprofile-jwt",
+    "offline_access",
+    "phone"
+  ]
+}

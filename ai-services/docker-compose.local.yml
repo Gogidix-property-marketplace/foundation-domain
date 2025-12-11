@@ -1,0 +1,422 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: gogidix-postgres
+    environment:
+      POSTGRES_DB: gogidix_ai
+      POSTGRES_USER: gogidix
+      POSTGRES_PASSWORD: gogidix123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gogidix -d gogidix_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: gogidix-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Kafka Message Broker
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: gogidix-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - gogidix-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: gogidix-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - gogidix-network
+
+  # Elasticsearch for Search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: gogidix-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - gogidix-network
+
+  # MLflow Tracking Server
+  mlflow:
+    image: python:3.9-slim
+    container_name: gogidix-mlflow
+    command: >
+      bash -c "pip install mlflow psycopg2-binary &&
+               mlflow server
+               --host 0.0.0.0
+               --port 5000
+               --backend-store-uri postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+               --default-artifact-root /mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    depends_on:
+      - postgres
+    networks:
+      - gogidix-network
+
+  # Jupyter Lab for Development
+  jupyter:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-jupyter
+    command: >
+      bash -c "pip install jupyter jupyterlab &&
+               jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+               --NotebookApp.token='' --NotebookApp.password=''"
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./:/workspace
+      - jupyter_data:/root/.jupyter
+    environment:
+      - PYTHONPATH=/workspace
+      - GPU_ENABLED=false
+    networks:
+      - gogidix-network
+
+  # Data Processing Service
+  data-processor:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-data-processor
+    command: >
+      bash -c "cd /workspace &&
+               python data/synthetic_data_generator.py &&
+               echo 'Data generation complete!'"
+    volumes:
+      - ./:/workspace
+      - ./data:/workspace/data
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - gogidix-network
+
+  # Model Training Service
+  model-trainer:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-model-trainer
+    command: >
+      bash -c "cd /workspace &&
+               python training/train_property_valuation.py
+               --data data/properties_sample_1000.parquet
+               --model-dir models/property_valuation_v1"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+      - ./data:/workspace/data
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - GPU_ENABLED=false
+    depends_on:
+      - postgres
+      - mlflow
+      - data-processor
+    networks:
+      - gogidix-network
+    profiles:
+      - training
+
+  # AI Gateway Service
+  ai-gateway:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-ai-gateway
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.gateway.main:app
+               --host 0.0.0.0
+               --port 8000
+               --reload"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - GPU_ENABLED=false
+      - SERVICE_NAME=ai-gateway
+      - SERVICE_ID=gateway-001
+      - API_KEY=sk-gogidix-local-1234567890abcdef
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - elasticsearch
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Property Intelligence Service
+  property-intelligence:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-property-intelligence
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.property_intelligence.main:app
+               --host 0.0.0.0
+               --port 8001
+               --reload"
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - GPU_ENABLED=false
+      - SERVICE_NAME=property-intelligence
+      - SERVICE_ID=property-intel-001
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - elasticsearch
+      - ai-gateway
+    networks:
+      - gogidix-network
+
+  # Conversational AI Service
+  conversational-ai:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-conversational-ai
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.conversational_ai.main:app
+               --host 0.0.0.0
+               --port 8002
+               --reload"
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - SERVICE_NAME=conversational-ai
+      - SERVICE_ID=conv-ai-001
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - ai-gateway
+    networks:
+      - gogidix-network
+
+  # Analytics Service
+  analytics:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-analytics
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.analytics.main:app
+               --host 0.0.0.0
+               --port 8003
+               --reload"
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./:/workspace
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - SERVICE_NAME=analytics
+      - SERVICE_ID=analytics-001
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+      - elasticsearch
+      - ai-gateway
+    networks:
+      - gogidix-network
+
+  # ML Platform Service
+  ml-platform:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-ml-platform
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.ml_platform.main:app
+               --host 0.0.0.0
+               --port 8004
+               --reload"
+    ports:
+      - "8004:8004"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+      - ./mlruns:/workspace/mlruns
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - GPU_ENABLED=false
+      - SERVICE_NAME=ml-platform
+      - SERVICE_ID=ml-platform-001
+    depends_on:
+      - postgres
+      - mlflow
+      - kafka
+      - ai-gateway
+    networks:
+      - gogidix-network
+
+  # Ethical AI Service
+  ethical-ai:
+    image: gogidix/ai-services:latest
+    container_name: gogidix-ethical-ai
+    command: >
+      bash -c "cd /workspace &&
+               uvicorn src.gogidix_ai.ethical_ai.main:app
+               --host 0.0.0.0
+               --port 8005
+               --reload"
+    ports:
+      - "8005:8005"
+    volumes:
+      - ./:/workspace
+      - ./models:/workspace/models
+    environment:
+      - DATABASE_URL=postgresql://gogidix:gogidix123@postgres:5432/gogidix_ai
+      - SERVICE_NAME=ethical-ai
+      - SERVICE_ID=ethical-ai-001
+    depends_on:
+      - postgres
+      - ai-gateway
+    networks:
+      - gogidix-network
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gogidix-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - gogidix-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: gogidix-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - gogidix-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: gogidix-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - ai-gateway
+      - property-intelligence
+      - conversational-ai
+      - analytics
+      - ml-platform
+      - ethical-ai
+    networks:
+      - gogidix-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  es_data:
+  mlflow_artifacts:
+  jupyter_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  gogidix-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

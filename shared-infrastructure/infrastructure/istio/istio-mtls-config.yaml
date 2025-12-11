@@ -1,0 +1,263 @@
+# Istio mTLS Configuration for Gogidix Property Marketplace
+# Enforces mutual TLS across all services in the mesh
+
+---
+# Peer Authentication Policy - Strict mTLS for all services
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# Peer Authentication for Workload Namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: gogidix-workloads
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# Peer Authentication for API Gateway
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: api-gateway
+  namespace: api-gateway
+spec:
+  mtls:
+    mode: STRICT
+  selector:
+    matchLabels:
+      app: api-gateway
+
+---
+# Peer Authentication for Property Service
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: property-service
+  namespace: property-service
+spec:
+  mtls:
+    mode: STRICT
+  selector:
+    matchLabels:
+      app: property-service
+
+---
+# Peer Authentication for User Service
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: user-service
+  namespace: user-service
+spec:
+  mtls:
+    mode: STRICT
+  selector:
+    matchLabels:
+      app: user-service
+
+---
+# Peer Authentication for Payment Service
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: payment-service
+  namespace: payment-service
+spec:
+  mtls:
+    mode: STRICT
+  selector:
+    matchLabels:
+      app: payment-service
+
+---
+# Authorization Policy - Allow traffic within mesh
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-all
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  rules:
+  - from:
+    - source:
+        principals: ["*"]
+
+---
+# Authorization Policy for API Gateway
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: api-gateway-policy
+  namespace: api-gateway
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
+  - to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  - when:
+    - key: request.headers[authorization]
+      values: ["*"]
+
+---
+# Authorization Policy for Property Service
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: property-service-policy
+  namespace: property-service
+spec:
+  selector:
+    matchLabels:
+      app: property-service
+  rules:
+  - from:
+    - source:
+        principals: [
+          "cluster.local/ns/api-gateway/sa/api-gateway-service-account",
+          "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+        ]
+  - to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+  - when:
+    - key: request.auth.claims[role]
+      values: ["admin", "user", "agent", "property_manager"]
+
+---
+# Authorization Policy for Payment Service (Strict)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: payment-service-policy
+  namespace: payment-service
+spec:
+  selector:
+    matchLabels:
+      app: payment-service
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/api-gateway/sa/api-gateway-service-account"]
+  - to:
+    - operation:
+        methods: ["POST", "GET"]
+  - when:
+    - key: request.auth.claims[role]
+      values: ["admin", "user", "agent"]
+    - key: request.headers[x-request-id]
+      values: ["*"]
+
+---
+# Deny Policy - Block direct access to services (only allow through gateway)
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-direct-access
+  namespace: gogidix-workloads
+spec:
+  {}
+  action: DENY
+  rules:
+  - from:
+    - source:
+        notPrincipals: [
+          "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+          "cluster.local/ns/api-gateway/sa/api-gateway-service-account"
+        ]
+
+---
+# JWT Authentication Policy
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-authn
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  jwtRules:
+  - issuer: "https://keycloak.gogidix.com/auth/realms/gogidix"
+    jwksUri: "https://keycloak.gogidix.com/auth/realms/gogidix/protocol/openid-connect/certs"
+    forwardOriginalToken: true
+    outputPayloadToHeader: "x-jwt-payload"
+  - issuer: "https://auth.gogidix.com"
+    jwksUri: "https://auth.gogidix.com/.well-known/jwks.json"
+    forwardOriginalToken: true
+
+---
+# Service Role for Property Service Access
+apiVersion: rbac.istio.io/v1beta1
+kind: ServiceRole
+metadata:
+  name: property-service-reader
+  namespace: property-service
+spec:
+  rules:
+  - services: ["property-service"]
+    methods: ["GET"]
+    constraints:
+    - key: request.auth.claims[role]
+      values: ["admin", "user", "agent", "property_manager"]
+
+---
+# Service Role Binding for Property Service
+apiVersion: rbac.istio.io/v1beta1
+kind: ServiceRoleBinding
+metadata:
+  name: property-service-reader-binding
+  namespace: property-service
+spec:
+  subjects:
+  - properties:
+      source.principal: "cluster.local/ns/api-gateway/sa/api-gateway-service-account"
+  roleRef:
+    kind: ServiceRole
+    name: "property-service-reader"
+
+---
+# Service Role for Admin Access
+apiVersion: rbac.istio.io/v1beta1
+kind: ServiceRole
+metadata:
+  name: admin-access
+  namespace: gogidix-workloads
+spec:
+  rules:
+  - services: ["*"]
+    methods: ["*"]
+
+---
+# Service Role Binding for Admin
+apiVersion: rbac.istio.io/v1beta1
+kind: ServiceRoleBinding
+metadata:
+  name: admin-access-binding
+  namespace: gogidix-workloads
+spec:
+  subjects:
+  - properties:
+      source.principal: "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+      request.auth.claims[role]: "admin"
+  roleRef:
+    kind: ServiceRole
+    name: "admin-access"
