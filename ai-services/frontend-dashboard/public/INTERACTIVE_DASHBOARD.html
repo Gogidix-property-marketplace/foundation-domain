@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gogidix AI Services - Interactive Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .animate-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .chart-container { position: relative; height: 300px; }
+        .service-card { transition: all 0.3s; cursor: pointer; }
+        .service-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-2xl font-bold text-gray-900">🚀 Gogidix AI Services Dashboard</h1>
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            48 Services Active
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="text-sm text-gray-600">Real-time Connected</span>
+                        </div>
+                        <button onclick="refreshDashboard()" class="p-2 hover:bg-gray-100 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Services</p>
+                            <p class="text-3xl font-bold text-gray-900">48</p>
+                            <p class="text-sm text-green-600">+5 this month</p>
+                        </div>
+                        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Healthy Services</p>
+                            <p class="text-3xl font-bold text-gray-900">46</p>
+                            <p class="text-sm text-gray-500">95.8% uptime</p>
+                        </div>
+                        <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Requests</p>
+                            <p class="text-3xl font-bold text-gray-900">1.2M</p>
+                            <p class="text-sm text-blue-600">+12% vs yesterday</p>
+                        </div>
+                        <svg class="w-12 h-12 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Avg Response Time</p>
+                            <p class="text-3xl font-bold text-gray-900">142ms</p>
+                            <p class="text-sm text-green-600">-8% improvement</p>
+                        </div>
+                        <svg class="w-12 h-12 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Tabs -->
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="bg-white rounded-lg shadow">
+                <!-- Tab Navigation -->
+                <div class="border-b border-gray-200">
+                    <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                        <button onclick="switchTab('overview')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600" data-tab="overview">
+                            Overview
+                        </button>
+                        <button onclick="switchTab('services')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="services">
+                            Services
+                        </button>
+                        <button onclick="switchTab('analytics')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="analytics">
+                            Analytics
+                        </button>
+                        <button onclick="switchTab('explorer')" class="tab-btn py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="explorer">
+                            Service Explorer
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Contents -->
+                <div class="p-6">
+                    <!-- Overview Tab -->
+                    <div id="overview" class="tab-content active">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Service Categories -->
+                            <div class="lg:col-span-2">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Services by Category</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="service-category-card bg-blue-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-blue-900">Predictive Analytics</h4>
+                                        <p class="text-2xl font-bold text-blue-600">3 services</p>
+                                        <ul class="mt-2 text-sm text-blue-700">
+                                            <li>• Predictive Analytics</li>
+                                            <li>• Demand Forecasting</li>
+                                            <li>• Time Series Analysis</li>
+                                        </ul>
+                                    </div>
+                                    <div class="service-category-card bg-purple-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-purple-900">Personalization</h4>
+                                        <p class="text-2xl font-bold text-purple-600">2 services</p>
+                                        <ul class="mt-2 text-sm text-purple-700">
+                                            <li>• Recommendation Service</li>
+                                            <li>• Personalization Engine</li>
+                                        </ul>
+                                    </div>
+                                    <div class="service-category-card bg-green-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-green-900">NLP</h4>
+                                        <p class="text-2xl font-bold text-green-600">6 services</p>
+                                        <ul class="mt-2 text-sm text-green-700">
+                                            <li>• NLP Processing</li>
+                                            <li>• Text Generation</li>
+                                            <li>• Translation</li>
+                                        </ul>
+                                    </div>
+                                    <div class="service-category-card bg-yellow-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-yellow-900">Computer Vision</h4>
+                                        <p class="text-2xl font-bold text-yellow-600">6 services</p>
+                                        <ul class="mt-2 text-sm text-yellow-700">
+                                            <li>• Computer Vision</li>
+                                            <li>• Image Recognition</li>
+                                            <li>• Video Analysis</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Top Services -->
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Services by Usage</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <div>
+                                                <p class="text-sm font-medium">Recommendation Service</p>
+                                                <p class="text-xs text-gray-500">Personalization</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-medium">32k/min</p>
+                                            <p class="text-xs text-gray-500">Port 9010</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <div>
+                                                <p class="text-sm font-medium">NLP Processing</p>
+                                                <p class="text-xs text-gray-500">Natural Language</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-medium">18k/min</p>
+                                            <p class="text-xs text-gray-500">Port 9041</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                            <div>
+                                                <p class="text-sm font-medium">Computer Vision</p>
+                                                <p class="text-xs text-gray-500">Computer Vision</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-medium">12k/min</p>
+                                            <p class="text-xs text-gray-500">Port 9039</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-medium text-gray-900 mb-3">Request Volume Trend</h4>
+                                <div class="chart-container">
+                                    <canvas id="requestChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-medium text-gray-900 mb-3">Response Time Distribution</h4>
+                                <div class="chart-container">
+                                    <canvas id="responseChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Services Tab -->
+                    <div id="services" class="tab-content">
+                        <div class="mb-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-900">All Services</h3>
+                            <button onclick="location.href='http://localhost:3000/services'" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                                View Detailed Services
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Port</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                                    📊
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">Predictive Analytics</div>
+                                                    <div class="text-xs text-gray-500">Python FastAPI</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Predictive</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="flex items-center">
+                                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                                Healthy
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm">9000</td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <button onclick="openServiceDetails('predictive-analytics')" class="text-indigo-600 hover:text-indigo-900">Details →</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                                    🎯
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">Recommendation Service</div>
+                                                    <div class="text-xs text-gray-500">Python FastAPI</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">Personalization</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="flex items-center">
+                                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                                Healthy
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm">9010</td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <button onclick="openServiceDetails('recommendation-service')" class="text-indigo-600 hover:text-indigo-900">Details →</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                                    💬
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">NLP Processing</div>
+                                                    <div class="text-xs text-gray-500">Python FastAPI</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">NLP</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="flex items-center">
+                                                <span class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                                                Degraded
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm">9041</td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <button onclick="openServiceDetails('nlp-processing')" class="text-indigo-600 hover:text-indigo-900">Details →</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                                                    👁️
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">Computer Vision</div>
+                                                    <div class="text-xs text-gray-500">Python FastAPI</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Vision</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="flex items-center">
+                                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                                Healthy
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm">9039</td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <button onclick="openServiceDetails('computer-vision')" class="text-indigo-600 hover:text-indigo-900">Details →</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Tab -->
+                    <div id="analytics" class="tab-content">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance Metrics</h3>
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Error Rates</h3>
+                                <canvas id="errorChart"></canvas>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Resource Usage</h3>
+                                <canvas id="resourceChart"></canvas>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Service Distribution</h3>
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Explorer Tab -->
+                    <div id="explorer" class="tab-content">
+                        <div class="mb-4">
+                            <p class="text-gray-600">Click on any service to explore its capabilities, test its API, and view detailed metrics.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Interactive Service Cards -->
+                            <div class="service-card bg-white rounded-lg shadow p-6" onclick="openServiceModal('predictive-analytics')">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-medium">Predictive Analytics</h3>
+                                    <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-4">Advanced forecasting and trend analysis</p>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>Port: 9000</span>
+                                    <span>Python FastAPI</span>
+                                </div>
+                                <div class="mt-4 pt-4 border-t">
+                                    <p class="text-sm font-medium text-gray-700">Capabilities:</p>
+                                    <ul class="mt-2 text-xs text-gray-600">
+                                        <li>• Time series forecasting</li>
+                                        <li>• Anomaly detection</li>
+                                        <li>• Statistical analysis</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="service-card bg-white rounded-lg shadow p-6" onclick="openServiceModal('nlp-processing')">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-medium">NLP Processing</h3>
+                                    <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-4">Natural language processing and text analysis</p>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>Port: 9041</span>
+                                    <span>Python FastAPI</span>
+                                </div>
+                                <div class="mt-4 pt-4 border-t">
+                                    <p class="text-sm font-medium text-gray-700">Capabilities:</p>
+                                    <ul class="mt-2 text-xs text-gray-600">
+                                        <li>• Sentiment analysis</li>
+                                        <li>• Entity recognition</li>
+                                        <li>• Text classification</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="service-card bg-white rounded-lg shadow p-6" onclick="openServiceModal('computer-vision')">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-medium">Computer Vision</h3>
+                                    <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-4">Object detection and image analysis</p>
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>Port: 9039</span>
+                                    <span>Python FastAPI</span>
+                                </div>
+                                <div class="mt-4 pt-4 border-t">
+                                    <p class="text-sm font-medium text-gray-700">Capabilities:</p>
+                                    <ul class="mt-2 text-xs text-gray-600">
+                                        <li>• Object detection</li>
+                                        <li>• Image classification</li>
+                                        <li>• Face detection</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Service Detail Modal (Hidden by default) -->
+        <div id="serviceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen">
+                <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 id="modalTitle" class="text-2xl font-bold text-gray-900"></h2>
+                            <button onclick="closeServiceModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="modalContent" class="space-y-4">
+                            <!-- Content will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="fixed bottom-4 right-4 z-50">
+            <div class="flex items-center space-x-2 px-3 py-2 rounded-lg shadow-lg text-sm bg-green-50 border border-green-200 text-green-800">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="font-medium">Dashboard Connected</span>
+                <span className="text-xs opacity-75">
+                    • Last updated: Just now
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts
+        let requestChart, responseChart, performanceChart, errorChart, resourceChart, distributionChart;
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active state from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-500', 'text-indigo-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active state to clicked button
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.remove('border-transparent', 'text-gray-500');
+            activeBtn.classList.add('border-indigo-500', 'text-indigo-600');
+
+            // Initialize charts when analytics tab is opened
+            if (tabName === 'analytics') {
+                setTimeout(initAnalyticsCharts, 100);
+            }
+        }
+
+        // Initialize Overview Charts
+        function initOverviewCharts() {
+            // Request Volume Chart
+            const requestCtx = document.getElementById('requestChart');
+            if (requestCtx && !requestChart) {
+                requestChart = new Chart(requestCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                        datasets: [{
+                            label: 'Requests per minute',
+                            data: [4500, 5200, 6800, 8500, 7200, 5900],
+                            borderColor: 'rgb(99, 102, 241)',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Response Time Chart
+            const responseCtx = document.getElementById('responseChart');
+            if (responseCtx && !responseChart) {
+                responseChart = new Chart(responseCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['0-100ms', '100-200ms', '200-500ms', '500ms+'],
+                        datasets: [{
+                            label: 'Response Time Distribution',
+                            data: [65, 25, 8, 2],
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(251, 191, 36, 0.8)',
+                                'rgba(249, 115, 22, 0.8)',
+                                'rgba(239, 68, 68, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize Analytics Charts
+        function initAnalyticsCharts() {
+            // Performance Metrics
+            const performanceCtx = document.getElementById('performanceChart');
+            if (performanceCtx && !performanceChart) {
+                performanceChart = new Chart(performanceCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Speed', 'Reliability', 'Accuracy', 'Scalability', 'Efficiency'],
+                        datasets: [{
+                            label: 'Current Performance',
+                            data: [85, 92, 88, 78, 90],
+                            borderColor: 'rgb(99, 102, 241)',
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        }, {
+                            label: 'Target Performance',
+                            data: [90, 95, 90, 85, 95],
+                            borderColor: 'rgb(156, 163, 175)',
+                            backgroundColor: 'rgba(156, 163, 175, 0.2)',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            // Error Rates
+            const errorCtx = document.getElementById('errorChart');
+            if (errorCtx && !errorChart) {
+                errorChart = new Chart(errorCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Error Rate %',
+                            data: [2.1, 1.8, 2.5, 1.9, 2.3, 1.5, 1.7],
+                            borderColor: 'rgb(239, 68, 68)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
+            // Resource Usage
+            const resourceCtx = document.getElementById('resourceChart');
+            if (resourceCtx && !resourceChart) {
+                resourceChart = new Chart(resourceCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['CPU', 'Memory', 'Storage', 'Network'],
+                        datasets: [{
+                            data: [35, 45, 25, 15],
+                            backgroundColor: [
+                                'rgb(99, 102, 241)',
+                                'rgb(34, 197, 94)',
+                                'rgb(251, 191, 36)',
+                                'rgb(239, 68, 68)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            // Service Distribution
+            const distributionCtx = document.getElementById('distributionChart');
+            if (distributionCtx && !distributionChart) {
+                distributionChart = new Chart(distributionCtx, {
+                    type: 'polarArea',
+                    data: {
+                        labels: ['Analytics', 'NLP', 'Vision', 'ML', 'Other'],
+                        datasets: [{
+                            data: [8, 10, 12, 6, 12],
+                            backgroundColor: [
+                                'rgba(99, 102, 241, 0.8)',
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(251, 191, 36, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(156, 163, 175, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        // Service Modal Functions
+        function openServiceModal(serviceId) {
+            const modal = document.getElementById('serviceModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            // Service details data
+            const serviceDetails = {
+                'predictive-analytics': {
+                    title: 'Predictive Analytics Service',
+                    content: `
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Service Information</h3>
+                                <p class="text-gray-600">Advanced forecasting and trend analysis using machine learning models</p>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Key Features</h3>
+                                <ul class="list-disc list-inside text-gray-600">
+                                    <li>Time series forecasting (ARIMA, Prophet, LSTM)</li>
+                                    <li>Anomaly detection with confidence intervals</li>
+                                    <li>Statistical analysis and trend identification</li>
+                                    <li>Batch processing capabilities</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">API Endpoints</h3>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <code class="text-sm">POST http://localhost:9000/api/v1/predict</code>
+                                    <button onclick="window.open('http://localhost:9000/docs')" class="ml-2 text-indigo-600 hover:text-indigo-800 text-sm">View Docs →</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Try it Out!</h3>
+                                <button onclick="testAPI('predictive-analytics')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                                    Test API
+                                </button>
+                            </div>
+                        </div>
+                    `
+                },
+                'nlp-processing': {
+                    title: 'NLP Processing Service',
+                    content: `
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Service Information</h3>
+                                <p class="text-gray-600">Comprehensive natural language processing capabilities</p>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Capabilities</h3>
+                                <ul class="list-disc list-inside text-gray-600">
+                                    <li>Sentiment analysis with multiple models</li>
+                                    <li>Named Entity Recognition (NER)</li>
+                                    <li>Text classification and categorization</li>
+                                    <li>Multi-language support (50+ languages)</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Quick Test</h3>
+                                <textarea id="nlpTestText" class="w-full p-2 border rounded" rows="3" placeholder="Enter text to analyze...">I love this product! It works amazing.</textarea>
+                                <button onclick="testNLP()" class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                                    Analyze Sentiment
+                                </button>
+                            </div>
+                        </div>
+                    `
+                },
+                'computer-vision': {
+                    title: 'Computer Vision Service',
+                    content: `
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Service Information</h3>
+                                <p class="text-gray-600">State-of-the-art computer vision and image processing</p>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Models Used</h3>
+                                <ul class="list-disc list-inside text-gray-600">
+                                    <li>YOLOv5 for object detection</li>
+                                    <li>ResNet for image classification</li>
+                                    <li>FaceNet for facial recognition</li>
+                                    <li>Tesseract for OCR</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-2">Test Features</h3>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="testVision('detect')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                        Object Detection
+                                    </button>
+                                    <button onclick="testVision('classify')" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                                        Image Classify
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            };
+
+            const service = serviceDetails[serviceId];
+            if (service) {
+                modalTitle.textContent = service.title;
+                modalContent.innerHTML = service.content;
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeServiceModal() {
+            document.getElementById('serviceModal').classList.add('hidden');
+        }
+
+        function openServiceDetails(serviceId) {
+            window.open(`http://localhost:3000/services/${serviceId}`, '_blank');
+        }
+
+        function refreshDashboard() {
+            location.reload();
+        }
+
+        function testAPI(serviceId) {
+            window.open(`http://localhost:3000/services/${serviceId}`, '_blank');
+        }
+
+        function testNLP() {
+            const text = document.getElementById('nlpTestText').value;
+            alert(`Analyzing sentiment for: "${text}"\n\nIn the real dashboard, this would call the NLP API and display results.`);
+        }
+
+        function testVision(feature) {
+            alert(`Testing ${feature} feature...\n\nIn the real dashboard, this would open an image upload interface to test the Computer Vision API.`);
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            initOverviewCharts();
+        });
+    </script>
+</body>
+</html>

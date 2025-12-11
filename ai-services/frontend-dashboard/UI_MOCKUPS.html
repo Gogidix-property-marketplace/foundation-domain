@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gogidix AI Dashboard - UI Mockups</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .chart-placeholder {
+            background: linear-gradient(45deg, #f3f4f6 25%, transparent 25%),
+                        linear-gradient(-45deg, #f3f4f6 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #f3f4f6 75%),
+                        linear-gradient(-45deg, transparent 75%, #f3f4f6 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">🎨 Gogidix AI Dashboard - UI Design Mockups</h1>
+                <div class="flex space-x-4">
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">View Live Dashboard</button>
+                    <a href="UI_DESIGN_DOCUMENTATION.md" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Design Docs</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-12">
+
+        <!-- Color Palette Section -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">🎨 Brand Color Palette</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Primary Colors -->
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">Primary</h3>
+                        <div class="space-y-2">
+                            <div class="h-20 rounded" style="background-color: #3b82f6;"></div>
+                            <p class="text-sm">Primary 500</p>
+                            <p class="text-xs text-gray-500">#3b82f6</p>
+                        </div>
+                    </div>
+                    <!-- Status Colors -->
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">Status Colors</h3>
+                        <div class="space-y-2">
+                            <div class="h-5 rounded" style="background-color: #10b981;"></div>
+                            <p class="text-sm">Success</p>
+                            <div class="h-5 rounded" style="background-color: #f59e0b;"></div>
+                            <p class="text-sm">Warning</p>
+                            <div class="h-5 rounded" style="background-color: #ef4444;"></div>
+                            <p class="text-sm">Error</p>
+                        </div>
+                    </div>
+                    <!-- Neutrals -->
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">Neutral Grays</h3>
+                        <div class="space-y-1">
+                            <div class="h-4 rounded" style="background-color: #111827;"></div>
+                            <div class="h-4 rounded" style="background-color: #374151;"></div>
+                            <div class="h-4 rounded" style="background-color: #6b7280;"></div>
+                            <div class="h-4 rounded" style="background-color: #9ca3af;"></div>
+                            <div class="h-4 rounded" style="background-color: #e5e7eb;"></div>
+                        </div>
+                    </div>
+                    <!-- Semantic -->
+                    <div>
+                        <h3 class="font-medium text-gray-700 mb-3">Semantic</h3>
+                        <div class="space-y-2">
+                            <div class="h-20 rounded border-2" style="border-color: #3b82f6; background-color: #eff6ff;"></div>
+                            <p class="text-sm">Interactive States</p>
+                            <div class="flex space-x-1">
+                                <div class="h-6 flex-1 rounded" style="background-color: #f9fafb;"></div>
+                                <div class="h-6 flex-1 rounded" style="background-color: #ffffff;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography Section -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">✏️ Typography Scale</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="space-y-4">
+                    <div>
+                        <h1 class="text-4xl font-bold text-gray-900">Page Title Heading</h1>
+                        <p class="text-sm text-gray-500">text-4xl font-bold</p>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-semibold text-gray-900">Section Header</h2>
+                        <p class="text-sm text-gray-500">text-3xl font-semibold</p>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold text-gray-900">Card Title</h3>
+                        <p class="text-sm text-gray-500">text-2xl font-semibold</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-medium text-gray-900">Subsection Header</h4>
+                        <p class="text-sm text-gray-500">text-xl font-medium</p>
+                    </div>
+                    <div>
+                        <p class="text-lg text-gray-900">Large body text for emphasis</p>
+                        <p class="text-sm text-gray-500">text-lg</p>
+                    </div>
+                    <div>
+                        <p class="text-base text-gray-900">Regular body text content</p>
+                        <p class="text-sm text-gray-500">text-base</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-700">Secondary text information</p>
+                        <p class="text-sm text-gray-500">text-sm</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Caption and metadata text</p>
+                        <p class="text-sm text-gray-500">text-xs</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Component Library -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">🧩 Component Library</h2>
+
+            <!-- Buttons -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="font-medium text-gray-900 mb-4">Buttons</h3>
+                <div class="space-y-4">
+                    <div class="flex flex-wrap gap-3">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Primary Button</button>
+                        <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Secondary Button</button>
+                        <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Success Button</button>
+                        <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Danger Button</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                            </svg>
+                        </button>
+                        <button class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Badges -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="font-medium text-gray-900 mb-4">Status Badges</h3>
+                <div class="flex flex-wrap gap-3">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                        Healthy
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                        <span class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                        Degraded
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                        <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                        Down
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                        Processing
+                    </span>
+                </div>
+            </div>
+
+            <!-- Cards -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="font-medium text-gray-900 mb-4">Cards</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-semibold text-gray-900">Service Card</h4>
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">Service description and status information</p>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-500">Port: 9000</span>
+                            <button class="text-blue-600 hover:text-blue-800">Details →</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-4 text-white">
+                        <h4 class="font-semibold mb-2">Metrics Card</h4>
+                        <p class="text-3xl font-bold mb-1">98.5%</p>
+                        <p class="text-sm opacity-90">Success Rate</p>
+                        <p class="text-xs opacity-75 mt-2">↗ +2.1% from yesterday</p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-900 mb-3">Quick Actions</h4>
+                        <div class="space-y-2">
+                            <button class="w-full text-left px-3 py-2 text-sm bg-gray-50 rounded hover:bg-gray-100">
+                                🔄 Restart Service
+                            </button>
+                            <button class="w-full text-left px-3 py-2 text-sm bg-gray-50 rounded hover:bg-gray-100">
+                                📊 View Logs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Layout Mockup -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">📊 Dashboard Layout Mockup</h2>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- Dashboard Header -->
+                <div class="bg-gray-900 text-white px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">AI Services Dashboard</h3>
+                        <div class="flex items-center space-x-4">
+                            <span class="flex items-center text-sm">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                Connected
+                            </span>
+                            <button class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">Refresh</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Content -->
+                <div class="p-6 space-y-6">
+                    <!-- Metrics Row -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                                </svg>
+                                <span class="text-xs text-gray-500">+12%</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">48</p>
+                            <p class="text-sm text-gray-600">Total Services</p>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-xs text-gray-500">98%</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">47</p>
+                            <p class="text-sm text-gray-600">Healthy</p>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-xs text-green-500">-15ms</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">145ms</p>
+                            <p class="text-sm text-gray-600">Avg Response</p>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                <span class="text-xs text-gray-500">+5.2K</span>
+                            </div>
+                            <p class="text-2xl font-bold text-gray-900">125K</p>
+                            <p class="text-sm text-gray-600">Total Requests</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <!-- Service Health -->
+                        <div class="md:col-span-2">
+                            <h4 class="font-semibold text-gray-900 mb-4">Service Health</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Predictive Analytics</p>
+                                            <p class="text-xs text-gray-500">Python FastAPI • Port 9000</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-medium text-gray-900">99.9%</p>
+                                        <p class="text-xs text-gray-500">Uptime</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">NLP Processing</p>
+                                            <p class="text-xs text-gray-500">Python FastAPI • Port 9041</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-medium text-gray-900">95.2%</p>
+                                        <p class="text-xs text-gray-500">Uptime</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Computer Vision</p>
+                                            <p class="text-xs text-gray-500">Python FastAPI • Port 9039</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-medium text-gray-900">98.9%</p>
+                                        <p class="text-xs text-gray-500">Uptime</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Feed -->
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-4">Recent Activity</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Health check passed</p>
+                                        <p class="text-xs text-gray-500">Predictive Analytics • 2m ago</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">High latency detected</p>
+                                        <p class="text-xs text-gray-500">NLP Processing • 5m ago</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Service restarted</p>
+                                        <p class="text-xs text-gray-500">AI Training Service • 15m ago</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Responsive Design Examples -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">📱 Responsive Design</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Mobile View -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium text-gray-900 mb-3">Mobile (< 768px)</h3>
+                    <div class="border-2 border-gray-300 rounded" style="height: 500px;">
+                        <div class="bg-gray-900 text-white px-3 py-2 text-xs">
+                            <div class="flex justify-between">
+                                <span>☰ Gogidix AI</span>
+                                <span>🔔</span>
+                            </div>
+                        </div>
+                        <div class="p-3 space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="bg-gray-50 p-2 rounded text-center">
+                                    <p class="text-lg font-bold">48</p>
+                                    <p class="text-xs">Services</p>
+                                </div>
+                                <div class="bg-gray-50 p-2 rounded text-center">
+                                    <p class="text-lg font-bold">47</p>
+                                    <p class="text-xs">Healthy</p>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="bg-white border rounded p-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">🟢 Analytics</span>
+                                        <span class="text-xs">99.9%</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white border rounded p-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm">🟡 NLP</span>
+                                        <span class="text-xs">95.2%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tablet View -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium text-gray-900 mb-3">Tablet (768px - 1024px)</h3>
+                    <div class="border-2 border-gray-300 rounded" style="height: 500px;">
+                        <div class="flex h-full">
+                            <div class="w-16 bg-gray-800 p-2">
+                                <div class="space-y-4">
+                                    <div class="w-8 h-8 bg-gray-600 rounded"></div>
+                                    <div class="w-8 h-8 bg-gray-600 rounded"></div>
+                                    <div class="w-8 h-8 bg-gray-600 rounded"></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 p-4">
+                                <div class="grid grid-cols-4 gap-2 mb-4">
+                                    <div class="bg-gray-50 p-2 rounded text-center">
+                                        <p class="text-sm font-bold">48</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-2 rounded text-center">
+                                        <p class="text-sm font-bold">47</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-2 rounded text-center">
+                                        <p class="text-sm font-bold">145ms</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-2 rounded text-center">
+                                        <p class="text-sm font-bold">125K</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="bg-white border rounded p-2 text-sm">
+                                        🟢 Predictive Analytics • Port 9000
+                                    </div>
+                                    <div class="bg-white border rounded p-2 text-sm">
+                                        🟡 NLP Processing • Port 9041
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop View -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="font-medium text-gray-900 mb-3">Desktop (> 1024px)</h3>
+                    <div class="border-2 border-gray-300 rounded" style="height: 500px;">
+                        <div class="flex h-full">
+                            <div class="w-48 bg-gray-800 text-white p-4">
+                                <div class="space-y-3">
+                                    <div class="font-semibold">Gogidix AI</div>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="bg-gray-700 rounded px-2 py-1">🏠 Dashboard</div>
+                                        <div class="px-2 py-1">🖥️ Services</div>
+                                        <div class="px-2 py-1">📊 Analytics</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-1 p-6">
+                                <div class="grid grid-cols-4 gap-3 mb-4">
+                                    <div class="bg-gray-50 p-3 rounded">
+                                        <p class="text-lg font-bold">48</p>
+                                        <p class="text-xs">Services</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded">
+                                        <p class="text-lg font-bold">47</p>
+                                        <p class="text-xs">Healthy</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded">
+                                        <p class="text-lg font-bold">145ms</p>
+                                        <p class="text-xs">Avg Response</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-3 rounded">
+                                        <p class="text-lg font-bold">125K</p>
+                                        <p class="text-xs">Requests</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-white border rounded p-3">
+                                        <h4 class="font-medium text-sm mb-2">Service Health</h4>
+                                        <div class="space-y-1 text-xs">
+                                            <div>🟢 Predictive Analytics - 99.9%</div>
+                                            <div>🟡 NLP Processing - 95.2%</div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white border rounded p-3">
+                                        <h4 class="font-medium text-sm mb-2">Quick Actions</h4>
+                                        <div class="grid grid-cols-2 gap-1 text-xs">
+                                            <button class="bg-gray-50 rounded p-1">🔄 Refresh</button>
+                                            <button class="bg-gray-50 rounded p-1">📊 Logs</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Elements -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">✨ Interactive Elements</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-medium text-gray-900 mb-4">Hover States & Transitions</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">Button Interactions</h4>
+                        <div class="space-y-3">
+                            <button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg transition-all hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5">
+                                Primary - Hover Me
+                            </button>
+                            <button class="w-full px-4 py-2 border border-gray-300 rounded-lg transition-all hover:border-blue-500 hover:text-blue-600">
+                                Secondary - Hover Me
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">Card Interactions</h4>
+                        <div class="border border-gray-200 rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg hover:border-blue-300">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-medium">Interactive Card</span>
+                                <span class="text-blue-600">→</span>
+                            </div>
+                            <p class="text-sm text-gray-600">Hover to see elevation and border color change</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Animation Examples -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">🎬 Animations</h2>
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-blue-600 rounded-full mx-auto mb-3 animate-pulse"></div>
+                        <p class="text-sm font-medium">Pulse Animation</p>
+                        <p class="text-xs text-gray-500">Live status indicators</p>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-green-600 rounded-full mx-auto mb-3 animate-bounce"></div>
+                        <p class="text-sm font-medium">Bounce Animation</p>
+                        <p class="text-xs text-gray-500">Success notifications</p>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-yellow-600 rounded mx-auto mb-3 animate-spin"></div>
+                        <p class="text-sm font-medium">Spin Animation</p>
+                        <p class="text-xs text-gray-500">Loading states</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white px-4 py-8 mt-12">
+        <div class="max-w-7xl mx-auto text-center">
+            <p class="text-sm opacity-75">© 2024 Gogidix AI Services - UI Design Documentation</p>
+            <p class="text-xs opacity-50 mt-2">Comprehensive design system for AI Services Dashboard</p>
+        </div>
+    </footer>
+
+    <script>
+        // Add interactive elements
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

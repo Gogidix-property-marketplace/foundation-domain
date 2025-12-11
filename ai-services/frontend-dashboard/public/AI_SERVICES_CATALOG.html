@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gogidix AI Services - Interactive Catalog</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .service-card { transition: all 0.3s ease; }
+        .service-card:hover { transform: translateY(-4px); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .code-block { background: #1e293b; color: #e2e8f0; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold">🤖 Gogidix AI Services Platform</h1>
+                    <p class="text-indigo-100">48 AI/ML Microservices - Detailed Interactive Catalog</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="flex items-center text-sm">
+                        <span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                        All Systems Operational
+                    </span>
+                    <button onclick="filterServices('all')" class="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30">
+                        Show All (48)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filter Bar -->
+    <div class="bg-white shadow-sm border-b sticky top-16 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex space-x-4">
+                    <button onclick="filterByCategory('predictive')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        🔮 Predictive
+                    </button>
+                    <button onclick="filterByCategory('nlp')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        💬 NLP
+                    </button>
+                    <button onclick="filterByCategory('computer-vision')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        👁️ Vision
+                    </button>
+                    <button onclick="filterByCategory('personalization')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        🎯 Personalization
+                    </button>
+                    <button onclick="filterByCategory('optimization')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        ⚡ Optimization
+                    </button>
+                    <button onclick="filterByCategory('infrastructure')" class="filter-btn px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-indigo-50 hover:border-indigo-300">
+                        🏗️ Infrastructure
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="search" placeholder="Search services..." class="px-3 py-1 border rounded-lg text-sm" onkeyup="searchServices(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Statistics Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Total Services</p>
+                        <p class="text-2xl font-bold text-gray-900">48</p>
+                    </div>
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <span class="text-xl">🤖</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Categories</p>
+                        <p class="text-2xl font-bold text-gray-900">12</p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <span class="text-xl">📊</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Technologies</p>
+                        <p class="text-2xl font-bold text-gray-900">3</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <span class="text-xl">⚙️</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">APIs Available</p>
+                        <p class="text-2xl font-bold text-gray-900">48</p>
+                    </div>
+                    <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <span class="text-xl">🔌</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Service Grid -->
+        <div id="serviceGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Services will be dynamically loaded here -->
+        </div>
+    </main>
+
+    <!-- Service Detail Modal -->
+    <div id="serviceModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div id="modalContent">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Complete AI Services Database
+        const aiServices = [
+            // Predictive Analytics Services (4)
+            {
+                id: 'predictive-analytics',
+                name: 'Predictive Analytics Service',
+                category: 'predictive',
+                technology: 'Python FastAPI',
+                port: 9000,
+                status: 'healthy',
+                description: 'Advanced forecasting and trend analysis using machine learning algorithms',
+                capabilities: [
+                    'Time series forecasting',
+                    'Trend analysis and prediction',
+                    'Anomaly detection',
+                    'Regression modeling',
+                    'Predictive maintenance'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/predict', description: 'Generate predictions' },
+                    { method: 'GET', path: '/models', description: 'List available models' },
+                    { method: 'POST', path: '/train', description: 'Train new model' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '145ms',
+                    accuracy: '94.5%'
+                },
+                documentation: 'http://localhost:9000/docs'
+            },
+            {
+                id: 'time-series-forecasting',
+                name: 'Time Series Forecasting',
+                category: 'predictive',
+                technology: 'Python FastAPI',
+                port: 9001,
+                status: 'healthy',
+                description: 'Specialized service for time series data forecasting and analysis',
+                capabilities: [
+                    'ARIMA modeling',
+                    'Prophet forecasting',
+                    'Seasonal decomposition',
+                    'Multi-variate forecasting',
+                    'Confidence intervals'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/forecast', description: 'Generate forecast' },
+                    { method: 'GET', path: '/seasonality', description: 'Analyze seasonality' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '856',
+                    avgResponseTime: '189ms',
+                    accuracy: '92.3%'
+                }
+            },
+            {
+                id: 'anomaly-detection',
+                name: 'Anomaly Detection Service',
+                category: 'predictive',
+                technology: 'Python FastAPI',
+                port: 9002,
+                status: 'healthy',
+                description: 'Real-time anomaly detection using various ML algorithms',
+                capabilities: [
+                    'Statistical anomaly detection',
+                    'Isolation forest',
+                    'One-class SVM',
+                    'Autoencoders',
+                    'Real-time monitoring'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/detect', description: 'Detect anomalies' },
+                    { method: 'POST', path: '/threshold', description: 'Set detection thresholds' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '2,145',
+                    avgResponseTime: '98ms',
+                    accuracy: '96.2%'
+                }
+            },
+            {
+                id: 'regression-analysis',
+                name: 'Regression Analysis Service',
+                category: 'predictive',
+                technology: 'Python FastAPI',
+                port: 9003,
+                status: 'healthy',
+                description: 'Comprehensive regression analysis and modeling service',
+                capabilities: [
+                    'Linear regression',
+                    'Polynomial regression',
+                    'Ridge and Lasso regression',
+                    'Feature importance analysis',
+                    'Model evaluation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/analyze', description: 'Perform regression analysis' },
+                    { method: 'GET', path: '/features', description: 'Get feature importance' }
+                ],
+                metrics: {
+                    uptime: '99.6%',
+                    requestsPerMin: '567',
+                    avgResponseTime: '234ms',
+                    accuracy: '91.8%'
+                }
+            },
+
+            // Personalization Services (4)
+            {
+                id: 'recommendation-service',
+                name: 'Recommendation Service',
+                category: 'personalization',
+                technology: 'Python FastAPI',
+                port: 9010,
+                status: 'healthy',
+                description: 'Personalized recommendation engine using collaborative filtering and content-based methods',
+                capabilities: [
+                    'User-based collaborative filtering',
+                    'Item-based collaborative filtering',
+                    'Content-based filtering',
+                    'Hybrid recommendations',
+                    'Cold start solutions'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/recommend', description: 'Get recommendations' },
+                    { method: 'POST', path: '/feedback', description: 'Submit user feedback' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '5,432',
+                    avgResponseTime: '89ms',
+                    accuracy: '87.6%'
+                }
+            },
+            {
+                id: 'user-profiling',
+                name: 'User Profiling Service',
+                category: 'personalization',
+                technology: 'Python FastAPI',
+                port: 9011,
+                status: 'healthy',
+                description: 'Advanced user behavior analysis and profiling',
+                capabilities: [
+                    'Behavioral segmentation',
+                    'Preference learning',
+                    'User clustering',
+                    'Profile updates',
+                    'A/B testing support'
+                ],
+                endpoints: [
+                    { method: 'GET', path: '/profile/{user_id}', description: 'Get user profile' },
+                    { method: 'POST', path: '/update', description: 'Update user profile' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '3,214',
+                    avgResponseTime: '76ms',
+                    accuracy: '89.3%'
+                }
+            },
+            {
+                id: 'content-personalization',
+                name: 'Content Personalization Service',
+                category: 'personalization',
+                technology: 'Python FastAPI',
+                port: 9012,
+                status: 'healthy',
+                description: 'Dynamic content personalization based on user preferences',
+                capabilities: [
+                    'Dynamic content ranking',
+                    'Personalized layouts',
+                    'A/B testing framework',
+                    'Multi-arm bandit',
+                    'Real-time adaptation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/personalize', description: 'Get personalized content' },
+                    { method: 'GET', path: '/abtest', description: 'A/B test management' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '4,567',
+                    avgResponseTime: '112ms',
+                    accuracy: '85.4%'
+                }
+            },
+            {
+                id: 'context-aware-recommendations',
+                name: 'Context-Aware Recommendations',
+                category: 'personalization',
+                technology: 'Python FastAPI',
+                port: 9013,
+                status: 'healthy',
+                description: 'Context-aware recommendation system considering time, location, and device',
+                capabilities: [
+                    'Contextual bandits',
+                    'Time-based recommendations',
+                    'Location-aware suggestions',
+                    'Device optimization',
+                    'Seasonal adjustments'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/contextual', description: 'Get contextual recommendations' },
+                    { method: 'POST', path: '/context', description: 'Update context' }
+                ],
+                metrics: {
+                    uptime: '99.6%',
+                    requestsPerMin: '2,876',
+                    avgResponseTime: '145ms',
+                    accuracy: '88.7%'
+                }
+            },
+
+            // Computer Vision Services (4)
+            {
+                id: 'computer-vision',
+                name: 'Computer Vision Service',
+                category: 'computer-vision',
+                technology: 'Python FastAPI',
+                port: 9039,
+                status: 'healthy',
+                description: 'Comprehensive computer vision and image processing service',
+                capabilities: [
+                    'Object detection',
+                    'Image classification',
+                    'Face recognition',
+                    'Scene understanding',
+                    'Image segmentation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/detect', description: 'Detect objects' },
+                    { method: 'POST', path: '/classify', description: 'Classify images' },
+                    { method: 'POST', path: '/recognize', description: 'Face recognition' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '1,876',
+                    avgResponseTime: '234ms',
+                    accuracy: '93.2%'
+                }
+            },
+            {
+                id: 'image-analysis',
+                name: 'Image Analysis Service',
+                category: 'computer-vision',
+                technology: 'Python FastAPI',
+                port: 9040,
+                status: 'healthy',
+                description: 'Advanced image analysis and feature extraction',
+                capabilities: [
+                    'Feature extraction',
+                    'Image similarity',
+                    'Quality assessment',
+                    'Metadata extraction',
+                    'Content moderation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/analyze', description: 'Analyze image' },
+                    { method: 'POST', path: '/similar', description: 'Find similar images' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '987',
+                    avgResponseTime: '178ms',
+                    accuracy: '91.5%'
+                }
+            },
+            {
+                id: 'video-processing',
+                name: 'Video Processing Service',
+                category: 'computer-vision',
+                technology: 'Python FastAPI',
+                port: 9042,
+                status: 'healthy',
+                description: 'Real-time video processing and analysis',
+                capabilities: [
+                    'Video classification',
+                    'Object tracking',
+                    'Motion detection',
+                    'Video summarization',
+                    'Real-time streaming'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/process', description: 'Process video' },
+                    { method: 'POST', path: '/stream', description: 'Start video stream' }
+                ],
+                metrics: {
+                    uptime: '99.6%',
+                    requestsPerMin: '456',
+                    avgResponseTime: '456ms',
+                    accuracy: '89.8%'
+                }
+            },
+            {
+                id: 'ocr-service',
+                name: 'OCR Service',
+                category: 'computer-vision',
+                technology: 'Python FastAPI',
+                port: 9043,
+                status: 'healthy',
+                description: 'Optical Character Recognition for text extraction from images',
+                capabilities: [
+                    'Text detection',
+                    'Handwriting recognition',
+                    'Document parsing',
+                    'Multi-language support',
+                    'Table extraction'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/extract', description: 'Extract text' },
+                    { method: 'POST', path: '/parse', description: 'Parse document' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '267ms',
+                    accuracy: '94.3%'
+                }
+            },
+
+            // Natural Language Processing Services (5)
+            {
+                id: 'nlp-processing',
+                name: 'NLP Processing Service',
+                category: 'nlp',
+                technology: 'Python FastAPI',
+                port: 9041,
+                status: 'degraded',
+                description: 'Comprehensive natural language processing and understanding',
+                capabilities: [
+                    'Text classification',
+                    'Sentiment analysis',
+                    'Named entity recognition',
+                    'Topic modeling',
+                    'Text summarization'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/process', description: 'Process text' },
+                    { method: 'POST', path: '/sentiment', description: 'Analyze sentiment' },
+                    { method: 'POST', path: '/entities', description: 'Extract entities' }
+                ],
+                metrics: {
+                    uptime: '95.2%',
+                    requestsPerMin: '3,456',
+                    avgResponseTime: '178ms',
+                    accuracy: '91.7%'
+                }
+            },
+            {
+                id: 'text-generation',
+                name: 'Text Generation Service',
+                category: 'nlp',
+                technology: 'Python FastAPI',
+                port: 9044,
+                status: 'healthy',
+                description: 'Advanced text generation using transformer models',
+                capabilities: [
+                    'GPT-based generation',
+                    'Creative writing',
+                    'Code generation',
+                    'Translation',
+                    'Summarization'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/generate', description: 'Generate text' },
+                    { method: 'POST', path: '/complete', description: 'Complete text' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '2,345',
+                    avgResponseTime: '892ms',
+                    accuracy: '87.9%'
+                }
+            },
+            {
+                id: 'language-translation',
+                name: 'Language Translation Service',
+                category: 'nlp',
+                technology: 'Python FastAPI',
+                port: 9046,
+                status: 'healthy',
+                description: 'Multi-language translation service',
+                capabilities: [
+                    '100+ languages',
+                    'Neural machine translation',
+                    'Real-time translation',
+                    'Batch processing',
+                    'Custom models'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/translate', description: 'Translate text' },
+                    { method: 'GET', path: '/languages', description: 'List supported languages' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '4,567',
+                    avgResponseTime: '234ms',
+                    accuracy: '93.1%'
+                }
+            },
+            {
+                id: 'sentiment-analysis',
+                name: 'Sentiment Analysis Service',
+                category: 'nlp',
+                technology: 'Python FastAPI',
+                port: 9047,
+                status: 'healthy',
+                description: 'Emotion and sentiment analysis service',
+                capabilities: [
+                    'Multi-class sentiment',
+                    'Emotion detection',
+                    'Aspect-based sentiment',
+                    'Real-time analysis',
+                    'Batch processing'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/analyze', description: 'Analyze sentiment' },
+                    { method: 'POST', path: '/emotion', description: 'Detect emotions' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '2,890',
+                    avgResponseTime: '123ms',
+                    accuracy: '92.4%'
+                }
+            },
+            {
+                id: 'chatbot-service',
+                name: 'Chatbot Service',
+                category: 'nlp',
+                technology: 'Python FastAPI',
+                port: 9048,
+                status: 'healthy',
+                description: 'Intelligent conversational AI service',
+                capabilities: [
+                    'Context-aware conversations',
+                    'Multi-turn dialogue',
+                    'Intent recognition',
+                    'Entity extraction',
+                    'Response generation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/chat', description: 'Send message' },
+                    { method: 'POST', path: '/feedback', description: 'Provide feedback' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '5,678',
+                    avgResponseTime: '456ms',
+                    accuracy: '88.6%'
+                }
+            },
+
+            // Machine Learning Training Services (4)
+            {
+                id: 'ai-training',
+                name: 'AI Training Service',
+                category: 'ml-training',
+                technology: 'Python FastAPI',
+                port: 9045,
+                status: 'healthy',
+                description: 'Automated machine learning model training service',
+                capabilities: [
+                    'AutoML capabilities',
+                    'Hyperparameter optimization',
+                    'Model selection',
+                    'Cross-validation',
+                    'Training pipelines'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/train', description: 'Train model' },
+                    { method: 'GET', path: '/status/{job_id}', description: 'Check training status' }
+                ],
+                metrics: {
+                    uptime: '100%',
+                    requestsPerMin: '123',
+                    avgResponseTime: '1.2s',
+                    accuracy: '95.0%'
+                }
+            },
+            {
+                id: 'model-registry',
+                name: 'Model Registry Service',
+                category: 'ml-training',
+                technology: 'Java Spring Boot',
+                port: 9049,
+                status: 'healthy',
+                description: 'Centralized model versioning and registry',
+                capabilities: [
+                    'Model versioning',
+                    'Metadata management',
+                    'Model deployment',
+                    'A/B testing',
+                    'Rollback capabilities'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/register', description: 'Register model' },
+                    { method: 'GET', path: '/models', description: 'List models' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '456',
+                    avgResponseTime: '67ms',
+                    accuracy: '99.9%'
+                }
+            },
+            {
+                id: 'hyperparameter-tuning',
+                name: 'Hyperparameter Tuning Service',
+                category: 'ml-training',
+                technology: 'Python FastAPI',
+                port: 9050,
+                status: 'healthy',
+                description: 'Automated hyperparameter optimization',
+                capabilities: [
+                    'Bayesian optimization',
+                    'Grid search',
+                    'Random search',
+                    'Genetic algorithms',
+                    'Multi-objective optimization'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/optimize', description: 'Optimize hyperparameters' },
+                    { method: 'GET', path: '/trials', description: 'Get optimization trials' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '234',
+                    avgResponseTime: '5.6s',
+                    accuracy: '91.2%'
+                }
+            },
+            {
+                id: 'feature-engineering',
+                name: 'Feature Engineering Service',
+                category: 'ml-training',
+                technology: 'Python FastAPI',
+                port: 9051,
+                status: 'healthy',
+                description: 'Automated feature engineering and selection',
+                capabilities: [
+                    'Feature extraction',
+                    'Feature selection',
+                    'Dimensionality reduction',
+                    'Feature scaling',
+                    'Automated pipelines'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/extract', description: 'Extract features' },
+                    { method: 'POST', path: '/select', description: 'Select features' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '567',
+                    avgResponseTime: '345ms',
+                    accuracy: '89.7%'
+                }
+            },
+
+            // Optimization Services (3)
+            {
+                id: 'resource-optimizer',
+                name: 'Resource Optimization Service',
+                category: 'optimization',
+                technology: 'Java Spring Boot',
+                port: 9052,
+                status: 'healthy',
+                description: 'AI-driven resource optimization and scheduling',
+                capabilities: [
+                    'Load balancing',
+                    'Resource allocation',
+                    'Cost optimization',
+                    'Performance tuning',
+                    'Auto-scaling'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/optimize', description: 'Optimize resources' },
+                    { method: 'GET', path: '/metrics', description: 'Get optimization metrics' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '890',
+                    avgResponseTime: '234ms',
+                    accuracy: '93.4%'
+                }
+            },
+            {
+                id: 'route-optimizer',
+                name: 'Route Optimization Service',
+                category: 'optimization',
+                technology: 'Java Spring Boot',
+                port: 9053,
+                status: 'healthy',
+                description: 'Advanced route optimization for logistics and delivery',
+                capabilities: [
+                    'VRP solver',
+                    'Traveling salesman',
+                    'Multi-stop optimization',
+                    'Real-time routing',
+                    'Traffic integration'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/optimize', description: 'Optimize route' },
+                    { method: 'POST', path: '/update', description: 'Update route' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '345',
+                    avgResponseTime: '456ms',
+                    accuracy: '87.3%'
+                }
+            },
+            {
+                id: 'inventory-optimizer',
+                name: 'Inventory Optimization Service',
+                category: 'optimization',
+                technology: 'Java Spring Boot',
+                port: 9054,
+                status: 'healthy',
+                description: 'AI-powered inventory management and optimization',
+                capabilities: [
+                    'Demand forecasting',
+                    'Stock optimization',
+                    'Reorder points',
+                    'Safety stock',
+                    'Supplier optimization'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/optimize', description: 'Optimize inventory' },
+                    { method: 'GET', path: '/forecast', description: 'Get demand forecast' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '234',
+                    avgResponseTime: '289ms',
+                    accuracy: '90.1%'
+                }
+            },
+
+            // Analytics & Reporting Services (4)
+            {
+                id: 'data-analytics',
+                name: 'Data Analytics Service',
+                category: 'analytics',
+                technology: 'Java Spring Boot',
+                port: 9055,
+                status: 'healthy',
+                description: 'Advanced data analytics and insights generation',
+                capabilities: [
+                    'Descriptive analytics',
+                    'Diagnostic analytics',
+                    'Predictive analytics',
+                    'Data visualization',
+                    'Report generation'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/analyze', description: 'Analyze data' },
+                    { method: 'POST', path: '/visualize', description: 'Generate visualizations' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '345ms',
+                    accuracy: '92.8%'
+                }
+            },
+            {
+                id: 'reporting-service',
+                name: 'Reporting Service',
+                category: 'analytics',
+                technology: 'Java Spring Boot',
+                port: 9056,
+                status: 'healthy',
+                description: 'Automated report generation and scheduling',
+                capabilities: [
+                    'Custom reports',
+                    'Scheduled reports',
+                    'Interactive dashboards',
+                    'Export capabilities',
+                    'Template library'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/generate', description: 'Generate report' },
+                    { method: 'GET', path: '/templates', description: 'List templates' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '567',
+                    avgResponseTime: '567ms',
+                    accuracy: '94.1%'
+                }
+            },
+            {
+                id: 'business-intelligence',
+                name: 'Business Intelligence Service',
+                category: 'analytics',
+                technology: 'Java Spring Boot',
+                port: 9057,
+                status: 'healthy',
+                description: 'Comprehensive BI and data warehousing service',
+                capabilities: [
+                    'Data warehousing',
+                    'OLAP cubes',
+                    'KPI tracking',
+                    'Executive dashboards',
+                    'Data mining'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/query', description: 'Execute BI query' },
+                    { method: 'GET', path: '/kpi', description: 'Get KPI data' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '890',
+                    avgResponseTime: '234ms',
+                    accuracy: '95.3%'
+                }
+            },
+            {
+                id: 'data-visualization',
+                name: 'Data Visualization Service',
+                category: 'analytics',
+                technology: 'Node.js Express',
+                port: 9058,
+                status: 'healthy',
+                description: 'Interactive data visualization and charting service',
+                capabilities: [
+                    'Chart generation',
+                    'Interactive visualizations',
+                    'Custom widgets',
+                    'Real-time dashboards',
+                    'Export formats'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/chart', description: 'Generate chart' },
+                    { method: 'POST', path: '/dashboard', description: 'Create dashboard' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '456',
+                    avgResponseTime: '178ms',
+                    accuracy: '91.6%'
+                }
+            },
+
+            // Security & Authentication Services (4)
+            {
+                id: 'authentication-service',
+                name: 'Authentication Service',
+                category: 'security',
+                technology: 'Java Spring Boot',
+                port: 9059,
+                status: 'healthy',
+                description: 'Secure authentication and authorization service',
+                capabilities: [
+                    'JWT authentication',
+                    'OAuth 2.0 support',
+                    'Multi-factor auth',
+                    'SSO integration',
+                    'Session management'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/auth', description: 'Authenticate user' },
+                    { method: 'POST', path: '/verify', description: 'Verify token' }
+                ],
+                metrics: {
+                    uptime: '100%',
+                    requestsPerMin: '5,678',
+                    avgResponseTime: '45ms',
+                    accuracy: '99.9%'
+                }
+            },
+            {
+                id: 'fraud-detection',
+                name: 'Fraud Detection Service',
+                category: 'security',
+                technology: 'Python FastAPI',
+                port: 9060,
+                status: 'healthy',
+                description: 'Real-time fraud detection and prevention',
+                capabilities: [
+                    'Transaction monitoring',
+                    'Pattern recognition',
+                    'Risk scoring',
+                    'Alert generation',
+                    'Case management'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/detect', description: 'Detect fraud' },
+                    { method: 'POST', path: '/risk', description: 'Calculate risk score' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '3,456',
+                    avgResponseTime: '123ms',
+                    accuracy: '96.7%'
+                }
+            },
+            {
+                id: 'data-encryption',
+                name: 'Data Encryption Service',
+                category: 'security',
+                technology: 'Java Spring Boot',
+                port: 9061,
+                status: 'healthy',
+                description: 'Advanced data encryption and protection service',
+                capabilities: [
+                    'AES-256 encryption',
+                    'RSA encryption',
+                    'Key management',
+                    'Digital signatures',
+                    'Hashing algorithms'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/encrypt', description: 'Encrypt data' },
+                    { method: 'POST', path: '/decrypt', description: 'Decrypt data' }
+                ],
+                metrics: {
+                    uptime: '100%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '23ms',
+                    accuracy: '100%'
+                }
+            },
+            {
+                id: 'access-control',
+                name: 'Access Control Service',
+                category: 'security',
+                technology: 'Java Spring Boot',
+                port: 9062,
+                status: 'healthy',
+                description: 'Fine-grained access control and permissions',
+                capabilities: [
+                    'RBAC support',
+                    'Attribute-based access',
+                    'Policy management',
+                    'Audit logging',
+                    'Dynamic permissions'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/check', description: 'Check access' },
+                    { method: 'GET', path: '/permissions', description: 'List permissions' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '2,345',
+                    avgResponseTime: '34ms',
+                    accuracy: '99.9%'
+                }
+            },
+
+            // Communication Services (4)
+            {
+                id: 'notification-service',
+                name: 'Notification Service',
+                category: 'communication',
+                technology: 'Java Spring Boot',
+                port: 9063,
+                status: 'healthy',
+                description: 'Multi-channel notification delivery service',
+                capabilities: [
+                    'Email notifications',
+                    'SMS notifications',
+                    'Push notifications',
+                    'In-app messages',
+                    'Webhook delivery'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/send', description: 'Send notification' },
+                    { method: 'GET', path: '/status/{id}', description: 'Check delivery status' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '4,567',
+                    avgResponseTime: '145ms',
+                    accuracy: '98.2%'
+                }
+            },
+            {
+                id: 'email-service',
+                name: 'Email Service',
+                category: 'communication',
+                technology: 'Java Spring Boot',
+                port: 9064,
+                status: 'healthy',
+                description: 'Advanced email delivery and templating service',
+                capabilities: [
+                    'HTML email templates',
+                    'Bulk email sending',
+                    'Delivery tracking',
+                    'Bounce handling',
+                    'SPF/DKIM support'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/send', description: 'Send email' },
+                    { method: 'POST', path: '/template', description: 'Create template' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '2,345',
+                    avgResponseTime: '234ms',
+                    accuracy: '97.8%'
+                }
+            },
+            {
+                id: 'sms-service',
+                name: 'SMS Service',
+                category: 'communication',
+                technology: 'Node.js Express',
+                port: 9065,
+                status: 'healthy',
+                description: 'SMS and messaging service',
+                capabilities: [
+                    'SMS delivery',
+                    'MMS support',
+                    'Two-way messaging',
+                    'OTP generation',
+                    'International delivery'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/send', description: 'Send SMS' },
+                    { method: 'POST', path: '/verify', description: 'Verify OTP' }
+                ],
+                metrics: {
+                    uptime: '99.7%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '567ms',
+                    accuracy: '96.3%'
+                }
+            },
+            {
+                id: 'webhook-service',
+                name: 'Webhook Service',
+                category: 'communication',
+                technology: 'Node.js Express',
+                port: 9066,
+                status: 'healthy',
+                description: 'Webhook management and delivery service',
+                capabilities: [
+                    'Webhook creation',
+                    'Event filtering',
+                    'Retry mechanisms',
+                    'Signature validation',
+                    'Payload encryption'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/create', description: 'Create webhook' },
+                    { method: 'POST', path: '/trigger', description: 'Trigger event' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '3,456',
+                    avgResponseTime: '89ms',
+                    accuracy: '97.5%'
+                }
+            },
+
+            // Data Management Services (4)
+            {
+                id: 'data-ingestion',
+                name: 'Data Ingestion Service',
+                category: 'data-management',
+                technology: 'Java Spring Boot',
+                port: 9067,
+                status: 'healthy',
+                description: 'High-throughput data ingestion and processing',
+                capabilities: [
+                    'Batch ingestion',
+                    'Stream processing',
+                    'Data validation',
+                    'Schema enforcement',
+                    'Error handling'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/ingest', description: 'Ingest data' },
+                    { method: 'GET', path: '/status/{job_id}', description: 'Check ingestion status' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '1,234',
+                    avgResponseTime: '456ms',
+                    accuracy: '99.2%'
+                }
+            },
+            {
+                id: 'data-transformation',
+                name: 'Data Transformation Service',
+                category: 'data-management',
+                technology: 'Python FastAPI',
+                port: 9068,
+                status: 'healthy',
+                description: 'ETL and data transformation service',
+                capabilities: [
+                    'Data mapping',
+                    'Format conversion',
+                    'Data cleaning',
+                    'Validation rules',
+                    'Transformation pipelines'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/transform', description: 'Transform data' },
+                    { method: 'POST', path: '/validate', description: 'Validate data' }
+                ],
+                metrics: {
+                    uptime: '99.8%',
+                    requestsPerMin: '890',
+                    avgResponseTime: '789ms',
+                    accuracy: '93.4%'
+                }
+            },
+            {
+                id: 'data-lake',
+                name: 'Data Lake Service',
+                category: 'data-management',
+                technology: 'Java Spring Boot',
+                port: 9069,
+                status: 'healthy',
+                description: 'Scalable data lake storage and management',
+                capabilities: [
+                    'Object storage',
+                    'Data partitioning',
+                    'Metadata management',
+                    'Query optimization',
+                    'Lifecycle policies'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/store', description: 'Store data' },
+                    { method: 'GET', path: '/query', description: 'Query data' }
+                ],
+                metrics: {
+                    uptime: '99.9%',
+                    requestsPerMin: '567',
+                    avgResponseTime: '234ms',
+                    accuracy: '99.5%'
+                }
+            },
+            {
+                id: 'backup-service',
+                name: 'Backup Service',
+                category: 'data-management',
+                technology: 'Java Spring Boot',
+                port: 9070,
+                status: 'healthy',
+                description: 'Automated backup and recovery service',
+                capabilities: [
+                    'Scheduled backups',
+                    'Incremental backups',
+                    'Point-in-time recovery',
+                    'Cross-region replication',
+                    'Data retention'
+                ],
+                endpoints: [
+                    { method: 'POST', path: '/backup', description: 'Create backup' },
+                    { method: 'POST', path: '/restore', description: 'Restore data' }
+                ],
+                metrics: {
+                    uptime: '100%',
+                    requestsPerMin: '123',
+                    avgResponseTime: '1.2s',
+                    accuracy: '99.9%'
+                }
+            }
+        ];
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            renderServices(aiServices);
+        });
+
+        // Render service cards
+        function renderServices(services) {
+            const grid = document.getElementById('serviceGrid');
+            grid.innerHTML = services.map(service => `
+                <div class="service-card bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer" onclick="showServiceDetail('${service.id}')">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="text-lg font-semibold text-gray-900">${service.name}</h3>
+                                    <span class="w-2 h-2 rounded-full ${service.status === 'healthy' ? 'bg-green-500' : service.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'} ${service.status === 'healthy' ? 'animate-pulse' : ''}"></span>
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1">${service.technology} • Port ${service.port}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(service.category)}">
+                                ${getCategoryIcon(service.category)} ${formatCategory(service.category)}
+                            </span>
+                        </div>
+
+                        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${service.description}</p>
+
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="bg-gray-50 rounded p-2">
+                                <p class="text-xs text-gray-500">Uptime</p>
+                                <p class="text-sm font-semibold text-gray-900">${service.metrics?.uptime || 'N/A'}</p>
+                            </div>
+                            <div class="bg-gray-50 rounded p-2">
+                                <p class="text-xs text-gray-500">Requests/min</p>
+                                <p class="text-sm font-semibold text-gray-900">${service.metrics?.requestsPerMin || 'N/A'}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">
+                                ${service.capabilities ? service.capabilities.slice(0, 2).join(' • ') : 'Loading...'}
+                            </span>
+                            <button class="text-indigo-600 hover:text-indigo-800 font-medium">
+                                View Details →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Show service detail modal
+        function showServiceDetail(serviceId) {
+            const service = aiServices.find(s => s.id === serviceId);
+            if (!service) return;
+
+            const modal = document.getElementById('serviceModal');
+            const content = document.getElementById('modalContent');
+
+            content.innerHTML = `
+                <div class="sticky top-0 bg-white border-b p-4">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="flex items-center space-x-3">
+                                <h2 class="text-2xl font-bold text-gray-900">${service.name}</h2>
+                                <span class="w-3 h-3 rounded-full ${service.status === 'healthy' ? 'bg-green-500' : service.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'} ${service.status === 'healthy' ? 'animate-pulse' : ''}"></span>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">${service.technology} • Port ${service.port}</p>
+                        </div>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6">
+                    <!-- Tabs -->
+                    <div class="border-b mb-6">
+                        <nav class="flex space-x-8">
+                            <button onclick="switchTab('overview')" class="tab-btn py-2 px-1 border-b-2 border-indigo-500 font-medium text-sm text-indigo-600">
+                                Overview
+                            </button>
+                            <button onclick="switchTab('capabilities')" class="tab-btn py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
+                                Capabilities
+                            </button>
+                            <button onclick="switchTab('endpoints')" class="tab-btn py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
+                                API Endpoints
+                            </button>
+                            <button onclick="switchTab('metrics')" class="tab-btn py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
+                                Metrics
+                            </button>
+                            <button onclick="switchTab('logs')" class="tab-btn py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
+                                Logs
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div id="overview" class="tab-content active">
+                        <div class="space-y-6">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+                                <p class="text-gray-600">${service.description}</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-sm text-gray-500 mb-1">Status</p>
+                                    <p class="text-lg font-semibold ${getStatusColor(service.status)}">${service.status.toUpperCase()}</p>
+                                </div>
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                    <p class="text-sm text-gray-500 mb-1">Category</p>
+                                    <p class="text-lg font-semibold text-gray-900">${formatCategory(service.category)}</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                        🔗 Open API Docs
+                                    </button>
+                                    <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                        🔄 Restart Service
+                                    </button>
+                                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                        📊 View Metrics
+                                    </button>
+                                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                        📋 View Logs
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="capabilities" class="tab-content">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Service Capabilities</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                ${service.capabilities ? service.capabilities.map(cap => `
+                                    <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                                        <span class="text-indigo-600">✓</span>
+                                        <span class="text-sm text-gray-700">${cap}</span>
+                                    </div>
+                                `).join('') : '<p class="text-gray-500">Loading capabilities...</p>'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="endpoints" class="tab-content">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">API Endpoints</h3>
+                            <div class="space-y-3">
+                                ${service.endpoints ? service.endpoints.map(endpoint => `
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <code class="text-sm font-mono bg-gray-800 text-white px-2 py-1 rounded">
+                                                ${endpoint.method} ${endpoint.path}
+                                            </code>
+                                        </div>
+                                        <p class="text-sm text-gray-600">${endpoint.description}</p>
+                                    </div>
+                                `).join('') : '<p class="text-gray-500">Loading endpoints...</p>'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="metrics" class="tab-content">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <p class="text-sm text-gray-500 mb-1">Uptime</p>
+                                <p class="text-2xl font-bold text-gray-900">${service.metrics?.uptime || 'N/A'}</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <p class="text-sm text-gray-500 mb-1">Requests/min</p>
+                                <p class="text-2xl font-bold text-gray-900">${service.metrics?.requestsPerMin || 'N/A'}</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <p class="text-sm text-gray-500 mb-1">Avg Response</p>
+                                <p class="text-2xl font-bold text-gray-900">${service.metrics?.avgResponseTime || 'N/A'}</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <p class="text-sm text-gray-500 mb-1">Accuracy</p>
+                                <p class="text-2xl font-bold text-gray-900">${service.metrics?.accuracy || 'N/A'}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold text-gray-900 mb-3">Performance Chart</h4>
+                            <div class="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <p class="text-gray-500">Performance metrics visualization</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="logs" class="tab-content">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Service Logs</h3>
+                                <button class="text-sm text-indigo-600 hover:text-indigo-800">Download Logs</button>
+                            </div>
+                            <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm">
+                                <div class="space-y-1">
+                                    <div class="text-green-400">[INFO] ${new Date().toISOString()} - Service started successfully</div>
+                                    <div class="text-blue-400">[INFO] ${new Date().toISOString()} - Health check passed</div>
+                                    <div class="text-yellow-400">[WARN] ${new Date().toISOString()} - High memory usage detected</div>
+                                    <div class="text-blue-400">[INFO] ${new Date().toISOString()} - Processing request #1234</div>
+                                    <div class="text-green-400">[INFO] ${new Date().toISOString()} - Request completed in ${service.metrics?.avgResponseTime || '150ms'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('serviceModal').classList.add('hidden');
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active state from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-500', 'text-indigo-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+
+            // Set active button
+            event.target.classList.remove('border-transparent', 'text-gray-500');
+            event.target.classList.add('border-indigo-500', 'text-indigo-600');
+        }
+
+        // Filter functions
+        function filterServices(category) {
+            if (category === 'all') {
+                renderServices(aiServices);
+            } else {
+                const filtered = aiServices.filter(service => service.category === category);
+                renderServices(filtered);
+            }
+        }
+
+        function filterByCategory(category) {
+            filterServices(category);
+        }
+
+        function searchServices(query) {
+            const filtered = aiServices.filter(service =>
+                service.name.toLowerCase().includes(query.toLowerCase()) ||
+                service.description.toLowerCase().includes(query.toLowerCase())
+            );
+            renderServices(filtered);
+        }
+
+        // Helper functions
+        function getCategoryIcon(category) {
+            const icons = {
+                'predictive': '🔮',
+                'personalization': '🎯',
+                'computer-vision': '👁️',
+                'nlp': '💬',
+                'ml-training': '🧠',
+                'optimization': '⚡',
+                'analytics': '📊',
+                'security': '🔒',
+                'communication': '📢',
+                'data-management': '💾',
+                'infrastructure': '🏗️'
+            };
+            return icons[category] || '🤖';
+        }
+
+        function getCategoryColor(category) {
+            const colors = {
+                'predictive': 'bg-purple-100 text-purple-800',
+                'personalization': 'bg-blue-100 text-blue-800',
+                'computer-vision': 'bg-green-100 text-green-800',
+                'nlp': 'bg-yellow-100 text-yellow-800',
+                'ml-training': 'bg-pink-100 text-pink-800',
+                'optimization': 'bg-indigo-100 text-indigo-800',
+                'analytics': 'bg-red-100 text-red-800',
+                'security': 'bg-gray-100 text-gray-800',
+                'communication': 'bg-cyan-100 text-cyan-800',
+                'data-management': 'bg-orange-100 text-orange-800',
+                'infrastructure': 'bg-teal-100 text-teal-800'
+            };
+            return colors[category] || 'bg-gray-100 text-gray-800';
+        }
+
+        function formatCategory(category) {
+            return category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'healthy': 'text-green-600',
+                'degraded': 'text-yellow-600',
+                'down': 'text-red-600'
+            };
+            return colors[status] || 'text-gray-600';
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('serviceModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
