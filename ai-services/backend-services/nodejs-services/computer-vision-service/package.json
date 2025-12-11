@@ -1,0 +1,80 @@
+{
+  "name": "@gogidix/computer-vision-service",
+  "version": "1.0.0",
+  "description": "Production-ready Node.js microservice for computer vision",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "jest --config jest.e2e.config.js",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write src/**/*.js",
+    "build": "echo \"No build step required for Node.js\"",
+    "docker:build": "docker build -t ${config.name} .",
+    "docker:run": "docker run -p ${config.port}:${config.port} ${config.name}",
+    "health": "curl -f http://localhost:${config.port}/health || exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "express-async-errors": "^3.1.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "mongoose": "^8.0.3",
+    "redis": "^4.6.11",
+    "axios": "^1.6.2",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4",
+    "uuid": "^9.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "prom-client": "^15.1.0",
+    "sharp": "^0.33.1",
+    "multer": "^1.4.4-lts.1",
+      "tesseract.js": "^4.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jest": "^27.6.3",
+    "@faker-js/faker": "^8.4.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "microservice",
+    "production-ready",
+    "enterprise",
+    "gogidix",
+    "api",
+    "computer-vision",
+    "ai"
+  ],
+  "author": "Gogidix Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gogidix/computer-vision-service.git"
+  }
+}
