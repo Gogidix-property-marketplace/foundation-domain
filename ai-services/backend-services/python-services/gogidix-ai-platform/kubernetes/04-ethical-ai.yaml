@@ -1,0 +1,498 @@
+# Ethical AI Service Deployment
+# Production-ready deployment with security and monitoring
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ethical-ai
+  labels:
+    name: ethical-ai
+    environment: production
+    team: ai
+    component: ethical-ai
+
+---
+# ConfigMap for Ethical AI Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ethical-ai-config
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai
+    component: config
+data:
+  config.yaml: |
+    # Ethical AI Configuration
+    ethical_ai:
+      # Core settings
+      enabled: true
+      bias_detection_enabled: true
+      explainability_enabled: true
+      compliance_monitoring_enabled: true
+
+      # Bias detection settings
+      protected_attributes:
+        - gender
+        - race
+        - ethnicity
+        - age
+        - disability
+        - religion
+        - sexual_orientation
+
+      fairness_thresholds:
+        demographic_parity: 0.1
+        equalized_odds: 0.15
+        equal_opportunity: 0.1
+        individual_fairness: 0.05
+        geographic_fairness: 0.2
+
+      bias_mitigation_strategy: preprocessing
+
+      # Explainability settings
+      explanation_methods:
+        - shap
+        - lime
+        - feature_importance
+        - surrogate
+
+      explanation_confidence_threshold: 0.7
+      counterfactual_enabled: true
+
+      # Compliance settings
+      compliance_standards:
+        - ai_act_high_risk
+        - gdpr_article_22
+        - iso_iec_42001
+        - nist_ai_rmf
+
+      assessment_frequency_days: 90
+      ethical_score_threshold: 70.0
+      auto_block_unethical: false
+
+      # Monitoring settings
+      continuous_monitoring_enabled: true
+      monitoring_interval_minutes: 60
+
+---
+# Secret for Ethical AI
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ethical-ai-secrets
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai
+    component: secrets
+type: Opaque
+data:
+  # Base64 encoded values
+  SECRET_KEY: c3VwZXJfc2VjcmV0X2V0aGljYWxfYWlfa2V5XzIwMjQ=  # super_secret_ethical_ai_key_2024
+  DATABASE_URL: cG9zdGdyZXNxbDovL2V0aGljYWxfYWk6c2VjdXJlX3Bhc3NAZGF0YWJhc2U6NTQzMi9ldGhpY2FsX2Fp  # postgresql://ethical_ai:secure_pass@database:5432/ethical_ai
+  REDIS_URL: cmVkaXM6Ly9ldGhpY2FsLWFpOnNlY3VyZV9wYXNzQHJlZGlzOjYzNzkvMA==  # redis://ethical-ai:secure_pass@redis:6379/0
+
+---
+# Ethical AI Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ethical-ai-service
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: service
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ethical-ai-service
+  template:
+    metadata:
+      labels:
+        app: ethical-ai-service
+        component: service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: ethical-ai-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: ethical-ai-service
+        image: gogidix/ethical-ai-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ethical-ai-secrets
+              key: SECRET_KEY
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: ethical-ai-secrets
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: ethical-ai-secrets
+              key: REDIS_URL
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: ELASTICSEARCH_HOSTS
+          value: "elasticsearch:9200"
+        - name: ETHICAL_REPORTS_PATH
+          value: "/app/ethical_reports"
+        - name: ETHICAL_ALERT_EMAILS
+          value: "ai-team@gogidix.com,compliance@gogidix.com"
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: reports
+          mountPath: /app/ethical_reports
+        - name: uploads
+          mountPath: /app/uploads
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+            ephemeral-storage: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+            ephemeral-storage: "5Gi"
+        livenessProbe:
+          httpGet:
+            path: /ethical-ai/health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ethical-ai/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+      volumes:
+      - name: config
+        configMap:
+          name: ethical-ai-config
+      - name: reports
+        persistentVolumeClaim:
+          claimName: ethical-ai-reports-pvc
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: ethical-ai-uploads-pvc
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        node-type: compute
+      tolerations:
+      - key: "ai-workload"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ethical-ai-service
+              topologyKey: kubernetes.io/hostname
+
+---
+# Ethical AI Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: ethical-ai-service
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: ethical-ai-service
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ethical-ai-service-hpa
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ethical-ai-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ethical-ai-service-pdb
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ethical-ai-service
+
+---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ethical-ai-reports-pvc
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: storage
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: nfs-storage
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ethical-ai-uploads-pvc
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: storage
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: nfs-storage
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ethical-ai-service-account
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: service-account
+  annotations:
+    iam.gke.io/gcp-service-account: ethical-ai-sa@gogidix-ai.iam.gserviceaccount.com
+
+---
+# Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ethical-ai-role
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: rbac
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+
+---
+# Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ethical-ai-rolebinding
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ethical-ai-role
+subjects:
+- kind: ServiceAccount
+  name: ethical-ai-service-account
+  namespace: ethical-ai
+
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ethical-ai-service-netpol
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: ethical-ai-service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: ai-gateway
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8000
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: database
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cache
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: messaging
+    ports:
+    - protocol: TCP
+      port: 9092
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 443
+
+---
+# Vertical Pod Autoscaler (optional)
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ethical-ai-service-vpa
+  namespace: ethical-ai
+  labels:
+    app: ethical-ai-service
+    component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ethical-ai-service
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: ethical-ai-service
+      maxAllowed:
+        cpu: 4
+        memory: 8Gi
+      minAllowed:
+        cpu: 100m
+        memory: 256Mi

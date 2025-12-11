@@ -1,0 +1,56 @@
+# AI Services Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-services
+  labels:
+    name: ai-services
+    environment: production
+    team: ai
+---
+# Resource Quota for AI Services
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ai-services-quota
+  namespace: ai-services
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: 200Gi
+    limits.cpu: "100"
+    limits.memory: 400Gi
+    persistentvolumeclaims: "20"
+    services: "20"
+    services.loadbalancers: "5"
+    services.nodeports: "10"
+    count/secrets: "20"
+    count/configmaps: "20"
+---
+# Limit Range for AI Services
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ai-services-limits
+  namespace: ai-services
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: "1Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container
+  - max:
+      cpu: "16"
+      memory: "64Gi"
+    min:
+      cpu: "10m"
+      memory: "64Mi"
+    type: Container
+  - max:
+      storage: 100Gi
+    min:
+      storage: 1Gi
+    type: PersistentVolumeClaim

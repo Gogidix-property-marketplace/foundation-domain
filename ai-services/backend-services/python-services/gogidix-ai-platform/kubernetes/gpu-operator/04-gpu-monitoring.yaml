@@ -1,0 +1,171 @@
+# NVIDIA GPU Monitoring with Prometheus
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-monitoring-config
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: gpu-monitoring
+data:
+  dcgm-exporter.yml: |
+    # DCGM Exporter Configuration
+    collectors:
+      - name: dcgm
+        devices:
+          - all
+        metrics:
+          # GPU Utilization
+          - name: DCGM_FI_DEV_GPU_UTIL
+            description: "GPU utilization"
+          # Memory Utilization
+          - name: DCGM_FI_DEV_MEM_COPY_UTIL
+            description: "Memory utilization"
+          # Power Usage
+          - name: DCGM_FI_DEV_POWER_USAGE
+            description: "Power usage in watts"
+          # Temperature
+          - name: DCGM_FI_DEV_GPU_TEMP
+            description: "GPU temperature in C"
+          # Memory Used
+          - name: DCGM_FI_DEV_MEM_USED
+            description: "Memory used in bytes"
+          # Memory Total
+          - name: DCGM_FI_DEV_MEM_TOTAL
+            description: "Total memory in bytes"
+          # SM Clock
+          - name: DCGM_FI_DEV_SM_CLOCK
+            description: "SM clock frequency in MHz"
+          # Memory Clock
+          - name: DCGM_FI_DEV_MEM_CLOCK
+            description: "Memory clock frequency in MHz"
+          # NVIDIA Encoder Utilization
+          - name: DCGM_FI_DEV_ENC_UTIL
+            description: "Encoder utilization"
+          # NVIDIA Decoder Utilization
+          - name: DCGM_FI_DEV_DEC_UTIL
+            description: "Decoder utilization"
+---
+# NVIDIA GPU Exporter DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gpu-monitoring-exporter
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: gpu-monitoring
+    app.kubernetes.io/component: exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpu-monitoring
+      app.kubernetes.io/component: exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gpu-monitoring
+        app.kubernetes.io/component: exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9400"
+    spec:
+      serviceAccount: gpu-operator
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoExecute
+      - operator: Exists
+      containers:
+      - name: dcgm-exporter
+        image: nvidia/k8s-dcgm-exporter:3.1.0-3.1.0-ubuntu20.04
+        args:
+        - --config-file=/etc/dcgm-exporter/dcgm-exporter.yml
+        - --address=:9400
+        ports:
+        - containerPort: 9400
+          name: metrics
+          protocol: TCP
+        env:
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: dcgm-config
+          mountPath: /etc/dcgm-exporter/
+        - name: proc
+          mountPath: /proc
+          readOnly: true
+        - name: sys
+          mountPath: /sys
+          readOnly: true
+        resources:
+          limits:
+            cpu: 200m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          privileged: true
+      volumes:
+      - name: dcgm-config
+        configMap:
+          name: gpu-monitoring-config
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      nodeSelector:
+        accelerator: nvidia-gpu
+---
+# Service for GPU Metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-monitoring-metrics
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: gpu-monitoring
+    app.kubernetes.io/component: exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9400"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 9400
+    targetPort: 9400
+    name: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: gpu-monitoring
+    app.kubernetes.io/component: exporter
+---
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gpu-metrics-monitor
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: gpu-monitoring
+    app.kubernetes.io/component: exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpu-monitoring
+      app.kubernetes.io/component: exporter
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    honorLabels: true

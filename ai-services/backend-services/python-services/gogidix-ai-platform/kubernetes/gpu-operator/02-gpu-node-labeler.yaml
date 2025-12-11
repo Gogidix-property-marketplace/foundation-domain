@@ -1,0 +1,80 @@
+# GPU Node Labeler and Taint Toleration
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gpu-node-labeler
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: gpu-node-labeler
+    app.kubernetes.io/component: gpu-node-labeler
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gpu-node-labeler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gpu-node-labeler
+        app.kubernetes.io/component: gpu-node-labeler
+    spec:
+      serviceAccount: gpu-operator
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: gpu-node-labeler
+        image: nvidia/k8s-device-plugin:v0.14.0
+        command: ["sh", "-c"]
+        args:
+        - |
+          #!/bin/sh
+
+          # Check if GPU is present
+          if command -v nvidia-smi >/dev/null 2>&1; then
+            # Get GPU count
+            GPU_COUNT=$(nvidia-smi --list-gpus | wc -l)
+
+            if [ $GPU_COUNT -gt 0 ]; then
+              # Label node with GPU information
+              kubectl label node $(hostname) \
+                accelerator=nvidia-gpu \
+                nvidia.com/gpu.count=$GPU_COUNT \
+                nvidia.com/gpu.product=$(nvidia-smi --query-gpu=name --format=csv,noheader,nounits | head -1 | tr ' ' '-') \
+                --overwrite
+
+              echo "Labeled node $(hostname) with $GPU_COUNT GPUs"
+
+              # Get GPU memory
+              GPU_MEMORY=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
+              kubectl label node $(hostname) \
+                nvidia.com/gpu.memory=$GPU_MEMORY \
+                --overwrite
+
+              # Get GPU driver version
+              DRIVER_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | head -1)
+              kubectl label node $(hostname) \
+                nvidia.com/gpu.driver=$DRIVER_VERSION \
+                --overwrite
+
+              # Get CUDA version
+              CUDA_VERSION=$(nvidia-smi | grep "CUDA Version" | awk '{print $9}')
+              kubectl label node $(hostname) \
+                nvidia.com/cuda.version=$CUDA_VERSION \
+                --overwrite
+
+              # Add taint if not already present
+              kubectl taint nodes $(hostname) nvidia.com/gpu=true:NoSchedule --overwrite || true
+
+              echo "Added GPU taint to node $(hostname)"
+            fi
+          fi
+
+          # Sleep indefinitely to keep pod running
+          sleep infinity
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          privileged: true

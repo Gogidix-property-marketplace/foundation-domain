@@ -1,0 +1,149 @@
+# NVIDIA MIG Manager for Multi-Instance GPU
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-mig-manager
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: nvidia-mig-manager
+    app.kubernetes.io/component: nvidia-mig-manager
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvidia-mig-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-mig-manager
+        app.kubernetes.io/component: nvidia-mig-manager
+    spec:
+      serviceAccount: gpu-operator
+      priorityClassName: system-node-critical
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoExecute
+      - operator: Exists
+      containers:
+      - image: nvidia/mig-manager:v0.3.0
+        name: nvidia-mig-manager
+        command:
+        - /usr/local/nvidia-mig-manager
+        - --mig-config-file=/etc/mig-manager-config/mig-parted-config.yaml
+        - --host-root=/host
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: mig-config
+          mountPath: /etc/mig-manager-config
+          readOnly: true
+        - name: host-root
+          mountPath: /host
+        resources:
+          requests:
+            cpu: 100m
+            memory: 50Mi
+          limits:
+            cpu: 500m
+            memory: 200Mi
+      volumes:
+      - name: mig-config
+        configMap:
+          name: nvidia-mig-manager-config
+      - name: host-root
+        hostPath:
+          path: /
+      nodeSelector:
+        accelerator: nvidia-gpu
+---
+# MIG Manager ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-mig-manager-config
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/name: nvidia-mig-manager
+    app.kubernetes.io/component: nvidia-mig-manager
+data:
+  mig-parted-config.yaml: |
+    # MIG Configuration for A100 GPUs
+    - version: 1
+      mig-enabled: true
+      devices:
+        - # Full GPU mode (no MIG)
+          mig-enabled: false
+        - # MIG mode with 1x7g.40gb profile
+          mig-enabled: true
+          mig-devices:
+            - mig-device-profile: "1g.40gb"
+              count: 7
+        - # MIG mode with 2x7g.20gb profile
+          mig-enabled: true
+          mig-devices:
+            - mig-device-profile: "2g.20gb"
+              count: 3
+            - mig-device-profile: "1g.5gb"
+              count: 1
+        - # MIG mode with 3x7g.10gb profile
+          mig-enabled: true
+          mig-devices:
+            - mig-device-profile: "3g.10gb"
+              count: 2
+            - mig-device-profile: "1g.5gb"
+              count: 1
+        - # MIG mode for ML workloads (2x4g.20gb)
+          mig-enabled: true
+          mig-devices:
+            - mig-device-profile: "4g.20gb"
+              count: 2
+---
+# CRD for MIG Config State
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: migconfigs.nvidia.com
+spec:
+  group: nvidia.com
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              mig-enabled:
+                type: boolean
+              devices:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    mig-enabled:
+                      type: boolean
+                    mig-devices:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          mig-device-profile:
+                            type: string
+                          count:
+                            type: integer
+  scope: Cluster
+  names:
+    plural: migconfigs
+    singular: migconfig
+    kind: MigConfig

@@ -1,0 +1,386 @@
+# PostgreSQL for AI Services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database
+data:
+  postgresql.conf: |
+    # PostgreSQL Configuration for AI Services
+    listen_addresses = '*'
+    port = 5432
+    max_connections = 500
+    superuser_reserved_connections = 3
+
+    # Memory Settings
+    shared_buffers = 128MB
+    effective_cache_size = 512MB
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+
+    # Checkpoint Settings
+    checkpoint_completion_target = 0.9
+    wal_buffers = 4MB
+    default_statistics_target = 100
+
+    # Logging
+    logging_collector = on
+    log_directory = '/var/log/postgresql'
+    log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+    log_statement = 'all'
+    log_min_duration_statement = 1000
+
+    # Performance
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+
+    # Extensions
+    shared_preload_libraries = 'pg_stat_statements,pgvector'
+    pg_stat_statements.track = 'all'
+
+  pg_hba.conf: |
+    # PostgreSQL Client Authentication
+    local   all             postgres                                trust
+    host    all             all             127.0.0.1/32            md5
+    host    all             all             0.0.0.0/0               md5
+    host    all             all             ::/0                    md5
+
+    # Kubernetes networks
+    host    all             all             10.0.0.0/8              md5
+    host    all             all             172.16.0.0/12           md5
+    host    all             all             192.168.0.0/16          md5
+
+  init.sql: |
+    -- AI Services Database Initialization
+
+    -- Enable extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "vector";
+    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+    CREATE EXTENSION IF NOT EXISTS "unaccent";
+
+    -- Create AI Services user
+    CREATE USER ai_services WITH PASSWORD 'CHANGE_ME_SECURE_PASSWORD';
+
+    -- Create databases
+    CREATE DATABASE ai_services_db;
+    CREATE DATABASE model_registry_db;
+    CREATE DATABASE feature_store_db;
+
+    -- Grant privileges
+    GRANT ALL PRIVILEGES ON DATABASE ai_services_db TO ai_services;
+    GRANT ALL PRIVILEGES ON DATABASE model_registry_db TO ai_services;
+    GRANT ALL PRIVILEGES ON DATABASE feature_store_db TO ai_services;
+
+    -- Connect to ai_services_db and create schemas
+    \c ai_services_db;
+
+    -- Create schemas
+    CREATE SCHEMA IF NOT EXISTS models;
+    CREATE SCHEMA IF NOT EXISTS predictions;
+    CREATE SCHEMA IF NOT EXISTS monitoring;
+    CREATE SCHEMA IF NOT EXISTS experiments;
+
+    -- Grant schema privileges
+    GRANT ALL ON SCHEMA models TO ai_services;
+    GRANT ALL ON SCHEMA predictions TO ai_services;
+    GRANT ALL ON SCHEMA monitoring TO ai_services;
+    GRANT ALL ON SCHEMA experiments TO ai_services;
+
+    -- Connect to model_registry_db
+    \c model_registry_db;
+
+    -- Create model registry tables
+    CREATE TABLE IF NOT EXISTS models (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(255) NOT NULL,
+        version VARCHAR(50) NOT NULL,
+        description TEXT,
+        framework VARCHAR(50),
+        model_type VARCHAR(50),
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(name, version)
+    );
+
+    CREATE TABLE IF NOT EXISTS model_versions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        model_id UUID REFERENCES models(id),
+        version VARCHAR(50) NOT NULL,
+        path TEXT NOT NULL,
+        checksum VARCHAR(64),
+        file_size BIGINT,
+        status VARCHAR(20) DEFAULT 'registered',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        tags JSONB,
+        metrics JSONB
+    );
+
+    -- Indexes for better performance
+    CREATE INDEX idx_models_name ON models(name);
+    CREATE INDEX idx_model_versions_model_id ON model_versions(model_id);
+    CREATE INDEX idx_models_created_at ON models(created_at);
+    CREATE INDEX idx_model_versions_status ON model_versions(status);
+---
+# PostgreSQL Persistent Volume
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3-encrypted
+  resources:
+    requests:
+      storage: 500Gi
+---
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database
+spec:
+  serviceName: postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      component: database
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      serviceAccountName: postgres
+      securityContext:
+        fsGroup: 999
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg15
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5432
+          name: postgres
+          protocol: TCP
+        env:
+        - name: POSTGRES_DB
+          value: postgres
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POSTGRES_INITDB_ARGS
+          value: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        - name: POSTGRES_INITDB_WALDIR
+          value: /var/lib/postgresql/wal
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "16Gi"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgresql.conf
+        - name: postgres-config
+          mountPath: /etc/postgresql/pg_hba.conf
+          subPath: pg_hba.conf
+        - name: postgres-init
+          mountPath: /docker-entrypoint-initdb.d/init.sql
+          subPath: init.sql
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 999
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: postgres-config
+        configMap:
+          name: postgres-config
+      - name: postgres-init
+        configMap:
+          name: postgres-config
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+      labels:
+        app: postgres
+        component: database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 500Gi
+---
+# PostgreSQL Headless Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+    protocol: TCP
+  selector:
+    app: postgres
+    component: database
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+    protocol: TCP
+  selector:
+    app: postgres
+    component: database
+---
+# PostgreSQL Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres
+  namespace: ai-services
+---
+# PostgreSQL Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: ai-services
+  labels:
+    app: postgres
+    component: database-backup
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          containers:
+          - name: postgres-backup
+            image: postgres:15
+            command:
+            - /bin/bash
+            - -c
+            - |
+              # Backup all databases
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              BACKUP_FILE="/backups/postgres_backup_${TIMESTAMP}.sql"
+
+              # Create backup
+              pg_dumpall -h postgres -U postgres -f ${BACKUP_FILE}
+
+              # Compress backup
+              gzip ${BACKUP_FILE}
+
+              # Upload to S3 (requires AWS CLI configured)
+              aws s3 cp ${BACKUP_FILE}.gz s3://gogidix-ai-backups/postgres/
+
+              # Clean local backups older than 7 days
+              find /backups -name "*.gz" -mtime +7 -delete
+
+              echo "Backup completed: ${BACKUP_FILE}.gz"
+            env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: postgres-backup-pvc
+          restartPolicy: OnFailure

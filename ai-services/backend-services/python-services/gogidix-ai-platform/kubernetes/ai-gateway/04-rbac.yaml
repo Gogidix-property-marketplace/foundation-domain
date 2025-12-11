@@ -1,0 +1,168 @@
+# AI Gateway Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-gateway
+  namespace: ai-services
+  labels:
+    app: ai-gateway
+    component: gateway
+  annotations:
+    iam.amazonaws.com/role: arn:aws:iam::123456789012:role/ai-gateway-role
+---
+# AI Gateway Cluster Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ai-gateway
+  labels:
+    app: ai-gateway
+    component: gateway
+rules:
+# Core Kubernetes resources
+- apiGroups: [""]
+  resources:
+  - pods
+  - nodes
+  - services
+  - endpoints
+  - events
+  - configmaps
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+# Apps resources
+- apiGroups: ["apps"]
+  resources:
+  - deployments
+  - replicasets
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+# AI Gateway specific resources
+- apiGroups: ["ai.gogidix.com"]
+  resources:
+  - "*"
+  verbs:
+  - "*"
+# Monitoring resources
+- apiGroups: ["monitoring.coreos.com"]
+  resources:
+  - prometheuses
+  - servicemonitors
+  - prometheusrules
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+# GPU resources
+- apiGroups: ["nvidia.com"]
+  resources:
+  - "gpus"
+  verbs:
+  - get
+  - list
+  - watch
+---
+# AI Gateway Cluster Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ai-gateway
+  labels:
+    app: ai-gateway
+    component: gateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ai-gateway
+subjects:
+- kind: ServiceAccount
+  name: ai-gateway
+  namespace: ai-services
+---
+# AI Gateway Role (namespace-scoped)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-gateway
+  namespace: ai-services
+  labels:
+    app: ai-gateway
+    component: gateway
+rules:
+# Namespace-scoped resources
+- apiGroups: [""]
+  resources:
+  - pods
+  - services
+  - endpoints
+  - configmaps
+  - secrets
+  - persistentvolumeclaims
+  verbs:
+  - ["*"]
+- apiGroups: ["apps"]
+  resources:
+  - deployments
+  - replicasets
+  verbs:
+  - ["*"]
+- apiGroups: ["extensions"]
+  resources:
+  - ingresses
+  verbs:
+  - ["*"]
+- apiGroups: ["batch"]
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - ["*"]
+- apiGroups: ["policy"]
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - ["*"]
+- apiGroups: ["autoscaling"]
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - ["*"]
+---
+# AI Gateway Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ai-gateway
+  namespace: ai-services
+  labels:
+    app: ai-gateway
+    component: gateway
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ai-gateway
+subjects:
+- kind: ServiceAccount
+  name: ai-gateway
+  namespace: ai-services
+---
+# Priority Class for AI Gateway
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+  labels:
+    app: ai-gateway
+    component: gateway
+value: 1000
+globalDefault: false
+description: "High priority class for AI Gateway pods"

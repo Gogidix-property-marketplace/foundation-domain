@@ -1,0 +1,710 @@
+# TensorFlow Extended (TFX) for AI Services
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tfx
+  labels:
+    name: tfx
+    environment: production
+    team: ai
+---
+# TFX Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tfx-config
+  namespace: tfx
+data:
+  config.yaml: |
+    # TFX Configuration for Gogidix Property Marketplace
+    pipeline_root: "gs://gogidix-tfx/pipelines"
+    metadata_connection_config:
+      metadata_connection_type: METADATA_CONNECTION_GRPC
+      grpc_host: "metadata-grpc-service.tfx"
+      grpc_port: 8080
+
+    # MLMD Settings
+    mlmd_connection_config:
+      mlmd_connection_type: MLMD_CONNECTION_GRPC
+      grpc_host: "mlmd-grpc-service.tfx"
+      grpc_port: 8080
+
+    # Beam Pipeline Options
+    beam_pipeline_args:
+      project: "gogidix-ai"
+      region: "us-west-2"
+      temp_location: "gs://gogidix-tfx/tmp"
+      # Dataflow settings
+      runner: "DataflowRunner"
+      disk_size_gb: 50
+      max_num_workers: 5
+      autoscaling_algorithm: "THROUGHPUT_BASED"
+      worker_machine_type: "n1-standard-4"
+      worker_disk_type: "pd-ssd"
+      # GPU settings for workers
+      worker_accelerator_type: "nvidia-tesla-t4"
+      worker_accelerator_count: 1
+
+    # TFX Components Configuration
+    components:
+      ExampleGen:
+        input_config:
+          splits:
+            - name: "train"
+              hash_buckets: 4
+            - name: "eval"
+              hash_buckets: 1
+            - name: "test"
+              hash_buckets: 1
+
+      StatisticsGen:
+        exclude: false
+        split_names: ["train"]
+
+      SchemaGen:
+        infer_feature_shape: true
+
+      ExampleValidator:
+        enable_anomalies: true
+
+      Transform:
+        module_file: "property_transform.py"
+        custom_config:
+          image_size: [256, 256]
+          normalize_features: true
+
+      Trainer:
+        custom_executor_spec:
+          class_path: "gogidix_tfx_extensions.trainer_executor.TrainExecutor"
+          module_path: "property_trainer.py"
+        run_args:
+          args:
+            - "--learning-rate=0.001"
+            - "--batch-size=32"
+            - "--epochs=100"
+            - "--gpu-count=1"
+
+      Tuner:
+        custom_executor_spec:
+          class_path: "gogidix_tfx_extensions.tuner_executor.TuneExecutor"
+        tune_args:
+          num_parallel_trials: 4
+          max_trials: 100
+          study_name: "property_valuation_tuning"
+
+      Evaluator:
+        slicing_specs:
+          - feature_keys: ["property_type"]
+          - feature_keys: ["location"]
+          - feature_keys: ["price_range"]
+
+      Pusher:
+        push_destination:
+          type: "custom"
+          custom_config:
+            model_registry_uri: "gs://gogidix-models/registry"
+            serving_image: "gogidix/property-valuation-serving:latest"
+            serving_args:
+              - "--model-name=property-valuation"
+              - "--port=8501"
+              - "--rest-api-port=8500"
+---
+# TFX Metadata Store
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metadata-grpc-service
+  namespace: tfx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: metadata-grpc-service
+  template:
+    metadata:
+      labels:
+        app: metadata-grpc-service
+    spec:
+      containers:
+      - name: metadata-grpc
+        image: gcr.io/tfx-oss-public/mlmd-store:1.15.0
+        ports:
+        - containerPort: 8080
+          name: grpc
+        env:
+        - name: GRPC_PORT
+          value: "8080"
+        - name: METADATA_STORE_SERVER_PORT
+          value: "8080"
+        - name: METADATA_STORE_DB_HOST
+          value: "metadata-db.tfx"
+        - name: METADATA_STORE_DB_PORT
+          value: "5432"
+        - name: METADATA_STORE_DB_NAME
+          value: "metadb"
+        - name: METADATA_STORE_DB_USER
+          value: "postgres"
+        - name: METADATA_STORE_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: tfx-secrets
+              key: db-password
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        livenessProbe:
+          exec:
+            command:
+            - grpc_health_probe
+            - -addr=:8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - grpc_health_probe
+            - -addr=:8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# TFX MLMD Database
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: metadata-db
+  namespace: tfx
+spec:
+  serviceName: metadata-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metadata-db
+  template:
+    metadata:
+      labels:
+        app: metadata-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: metadb
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: tfx-secrets
+              key: db-password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: metadata-db-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "8Gi"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 10
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: metadata-db-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 200Gi
+---
+# TFX Orchestration Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tfx-orchestrator
+  namespace: tfx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tfx-orchestrator
+  template:
+    metadata:
+      labels:
+        app: tfx-orchestrator
+    spec:
+      serviceAccountName: tfx-service-account
+      containers:
+      - name: orchestrator
+        image: gcr.io/tfx-oss-public/tfx-service:1.15.0
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: TFX_GRPC_SERVICE_PORT
+          value: "8080"
+        - name: TFX_GRPC_SERVICE_HOST
+          value: "0.0.0.0"
+        - name: BEAM_CONFIG_FILE
+          value: "/etc/tfx/config.yaml"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/etc/gcp/service-account.json"
+        command:
+        - /tfx-service
+        - -grpc-port
+        - "8080"
+        - -grpc-host
+        - "0.0.0.0"
+        - -config-file
+        - "/etc/tfx/config.yaml"
+        volumeMounts:
+        - name: tfx-config
+          mountPath: /etc/tfx
+        - name: gcp-sa
+          mountPath: /etc/gcp
+          readOnly: true
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "8Gi"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: tfx-config
+        configMap:
+          name: tfx-config
+      - name: gcp-sa
+        secret:
+          secretName: gcp-service-account
+---
+# TFX Pipeline Runner
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: property-valuation-pipeline
+  namespace: tfx
+  labels:
+    app: tfx-pipeline
+    pipeline: property-valuation
+spec:
+  template:
+    metadata:
+      labels:
+        app: tfx-pipeline-runner
+    spec:
+      serviceAccountName: tfx-service-account
+      restartPolicy: Never
+      containers:
+      - name: pipeline-runner
+        image: gcr.io/tfx-oss-public/tfx-cli:1.15.0
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/etc/gcp/service-account.json"
+        - name: PIPELINE_NAME
+          value: "property-valuation-pipeline"
+        - name: PIPELINE_ROOT
+          value: "gs://gogidix-tfx/pipelines"
+        - name: DATA_ROOT
+          value: "gs://gogidix-data/property/raw"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # Install custom TFX extensions
+          pip install gogidix-tfx-extensions
+
+          # Create pipeline definition
+          cat > /tmp/pipeline.py << 'EOF'
+          import tensorflow as tf
+          from tfx import v1 as tfx
+          from tfx.orchestration import data_types
+
+          def create_pipeline(pipeline_name, pipeline_root, data_root):
+              # Define components
+              example_gen = tfx.components.CsvExampleGen(
+                  input_base=data_root
+              )
+
+              statistics_gen = tfx.components.StatisticsGen(
+                  examples=example_gen.outputs['examples']
+              )
+
+              schema_gen = tfx.components.SchemaGen(
+                  statistics=statistics_gen.outputs['statistics']
+              )
+
+              example_validator = tfx.components.ExampleValidator(
+                  statistics=statistics_gen.outputs['statistics'],
+                  schema=schema_gen.outputs['schema']
+              )
+
+              transform = tfx.components.Transform(
+                  examples=example_gen.outputs['examples'],
+                  schema=schema_gen.outputs['schema'],
+                  module_file='property_transform.py'
+              )
+
+              trainer = tfx.extensions.google_cloud_ai_platform.Trainer(
+                  module_file='property_trainer.py',
+                  examples=transform.outputs['transformed_examples'],
+                  transform_graph=transform.outputs['transform_graph'],
+                  schema=schema_gen.outputs['schema'],
+                  train_args=tfx.proto.TrainArgs(
+                      num_steps=10000
+                  ),
+                  eval_args=tfx.proto.EvalArgs(
+                      num_steps=5000
+                  )
+              )
+
+              resolver = tfx.dsl.Resolver(
+                  strategy_class=tfx.dsl.experimental.LatestStrategy,
+                  model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model),
+                  model_blessing=tfx.dsl.Channel(
+                      type=tfx.types.standard_artifacts.ModelBlessing
+                  )
+              )
+
+              pusher = tfx.extensions.google_cloud_ai_platform.Pusher(
+                  model=trainer.outputs['model'],
+                  model_blessing=resolver.outputs['model_blessing'],
+                  custom_config={
+                      'project_id': 'gogidix-ai',
+                      'model_name': 'property_valuation'
+                  }
+              )
+
+              return tfx.dsl.Pipeline(
+                  pipeline_name=pipeline_name,
+                  pipeline_root=pipeline_root,
+                  components=[
+                      example_gen,
+                      statistics_gen,
+                      schema_gen,
+                      example_validator,
+                      transform,
+                      trainer,
+                      resolver,
+                      pusher
+                  ]
+              )
+          EOF
+
+          # Run the pipeline
+          tfx pipeline create \
+            --pipeline-path=/tmp/pipeline.py \
+            --endpoint=localhost:8080 \
+            --engine=kubeflow
+        volumeMounts:
+        - name: gcp-sa
+          mountPath: /etc/gcp
+          readOnly: true
+        - name: pipeline-code
+          mountPath: /opt/pipeline
+          readOnly: true
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+        nodeSelector:
+          accelerator: nvidia-gpu
+      volumes:
+      - name: gcp-sa
+        secret:
+          secretName: gcp-service-account
+      - name: pipeline-code
+        configMap:
+          name: tfx-pipeline-code
+---
+# TFX Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-grpc-service
+  namespace: tfx
+  labels:
+    app: metadata-grpc-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: grpc
+  selector:
+    app: metadata-grpc-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metadata-db
+  namespace: tfx
+  labels:
+    app: metadata-db
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: metadata-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tfx-orchestrator
+  namespace: tfx
+  labels:
+    app: tfx-orchestrator
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: tfx-orchestrator
+---
+# TFX Pipeline Code ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tfx-pipeline-code
+  namespace: tfx
+data:
+  property_transform.py: |
+    """Property data transformation module for TFX."""
+    import tensorflow as tf
+    import tensorflow_transform as tft
+
+    TRANSFORMED_FEATURES = [
+        "bedrooms_normalized",
+        "bathrooms_normalized",
+        "square_feet_normalized",
+        "year_built_normalized",
+        "location_encoded",
+        "property_type_encoded"
+    ]
+
+    def preprocessing_fn(inputs):
+        """Preprocess input features."""
+        outputs = {}
+
+        # Normalize numerical features
+        outputs["bedrooms_normalized"] = tft.scale_to_z_score(
+            inputs["bedrooms"]
+        )
+        outputs["bathrooms_normalized"] = tft.scale_to_z_score(
+            inputs["bathrooms"]
+        )
+        outputs["square_feet_normalized"] = tft.scale_to_z_score(
+            inputs["square_feet"]
+        )
+        outputs["year_built_normalized"] = tft.scale_to_z_score(
+            inputs["year_built"]
+        )
+
+        # Encode categorical features
+        outputs["location_encoded"] = tft.compute_and_apply_vocabulary(
+            inputs["location"],
+            vocab_filename="location_vocab"
+        )
+        outputs["property_type_encoded"] = tft.compute_and_apply_vocabulary(
+            inputs["property_type"],
+            vocab_filename="property_type_vocab"
+        )
+
+        # Add target
+        outputs["price_normalized"] = tft.scale_to_0_1(inputs["price"])
+
+        return outputs
+
+  property_trainer.py: |
+    """Property valuation trainer module for TFX."""
+    import tensorflow as tf
+    import tensorflow_transform as tft
+    from tfx.components.trainer.executor import TrainerFnArgs
+
+    def run_fn(fn_args: TrainerFnArgs):
+        """Train the property valuation model."""
+        # Load transformed data
+        transform_graph = tft.TransformedFeatureGraph(
+            fn_args.transform_graph_path
+        )
+
+        train_dataset = _input_fn(
+            fn_args.train_files,
+            transform_graph,
+            batch_size=32
+        )
+        eval_dataset = _input_fn(
+            fn_args.eval_files,
+            transform_graph,
+            batch_size=32
+        )
+
+        # Build model
+        model = _build_model()
+
+        # Compile model
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(
+                learning_rate=0.001
+            ),
+            loss="mse",
+            metrics=["mae", "mape"]
+        )
+
+        # Train model
+        model.fit(
+            train_dataset,
+            epochs=100,
+            validation_data=eval_dataset,
+            callbacks=[
+                tf.keras.callbacks.EarlyStopping(
+                    patience=10,
+                    restore_best_weights=True
+                ),
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    factor=0.5,
+                    patience=5
+                )
+            ]
+        )
+
+        # Save model
+        signatures = {
+            "serving_default": _get_serving_signature(
+                model, transform_graph
+            )
+        }
+
+        model.save(
+            fn_args.serving_model_dir,
+            save_format="tf",
+            signatures=signatures
+        )
+
+    def _build_model():
+        """Build the neural network model."""
+        inputs = {}
+        for feature in TRANSFORMED_FEATURES:
+            inputs[feature] = tf.keras.layers.Input(
+                shape=(1,), name=feature
+            )
+
+        # Concatenate features
+        x = tf.keras.layers.Concatenate()(list(inputs.values()))
+
+        # Dense layers
+        x = tf.keras.layers.Dense(128, activation="relu")(x)
+        x = tf.keras.layers.Dropout(0.2)(x)
+        x = tf.keras.layers.Dense(64, activation="relu")(x)
+        x = tf.keras.layers.Dropout(0.2)(x)
+        x = tf.keras.layers.Dense(32, activation="relu")(x)
+
+        # Output layer
+        outputs = tf.keras.layers.Dense(1, activation="linear")(x)
+
+        return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+    def _input_fn(file_pattern, transform_graph, batch_size):
+        """Create input function."""
+        return tf.data.experimental.make_batched_features_dataset(
+            file_pattern,
+            TRANSFORMED_FEATURES + ["price_normalized"],
+            batch_size=batch_size,
+            shuffle=True
+        ).map(
+            lambda x: (x, x["price_normalized"])
+        )
+---
+# TFX Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tfx-secrets
+  namespace: tfx
+type: Opaque
+data:
+  db-password: c2VjdXJlX3RmeF9wYXNz  # base64 encoded
+---
+# TFX Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tfx-service-account
+  namespace: tfx
+  annotations:
+    iam.gke.io/gcp-service-account: tfx-sa@gogidix-ai.iam.gserviceaccount.com
+---
+# TFX RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tfx-operator
+  namespace: tfx
+rules:
+- apiGroups: ["kubeflow.org"]
+  resources: ["viewers", "viewers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "jobs"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tfx-operator-binding
+  namespace: tfx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tfx-operator
+subjects:
+- kind: ServiceAccount
+  name: tfx-service-account
+  namespace: tfx

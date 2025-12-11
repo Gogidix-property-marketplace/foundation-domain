@@ -1,0 +1,555 @@
+# Kubeflow Installation for AI Services
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeflow
+  labels:
+    name: kubeflow
+    environment: production
+    team: ai
+---
+# Kubeflow Profiles
+apiVersion: kubeflow.org/v1beta1
+kind: Profile
+metadata:
+  name: ai-services
+  namespace: kubeflow
+spec:
+  owner:
+    kind: User
+    name: ai-services@gogidix.com
+---
+# Kubeflow Pipelines Service
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeflow-pipelines-profile-controller-config
+  namespace: kubeflow
+data:
+  enableKatib: "true"
+  enablePipelines: "true"
+  enableNotebooks: "true"
+  enableKserve: "true"
+---
+# Istio Gateway for Kubeflow
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: kubeflow-gateway
+  namespace: kubeflow
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - kubeflow.gogidix.com
+---
+# Kubeflow Virtual Service
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: kubeflow
+  namespace: kubeflow
+spec:
+  hosts:
+  - kubeflow.gogidix.com
+  gateways:
+  - kubeflow-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: ml-pipeline-ui
+        port:
+          number: 80
+---
+# Kubeflow MinIO for Artifacts
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: kubeflow
+  labels:
+    app: minio
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:RELEASE.2023-10-25T06-33-25Z
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        ports:
+        - containerPort: 9000
+          name: http
+        - containerPort: 9001
+          name: console
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: minioadmin
+        - name: MINIO_SECRET_KEY
+          value: minioadmin
+        volumeMounts:
+        - name: minio-storage
+          mountPath: /data
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: minio-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 1Ti
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: kubeflow
+  labels:
+    app: minio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: http
+  - port: 9001
+    targetPort: 9001
+    name: console
+  selector:
+    app: minio
+---
+# Kubeflow MySQL Metadata Store
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: kubeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: kubeflow
+        - name: MYSQL_DATABASE
+          value: kubeflow
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - mysql
+            - -h
+            - localhost
+            - -e
+            - "SELECT 1"
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: kubeflow
+  labels:
+    app: mysql
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: mysql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: kubeflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3-encrypted
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Kubeflow Pipeline Components
+apiVersion: kubeflow.org/v1beta1
+kind: PodDefault
+metadata:
+  name: add-gpu-access
+  namespace: kubeflow
+spec:
+  desc: "Add GPU access to pods"
+  selector:
+    matchLabels:
+      add-gpu-access: "true"
+  volumes:
+  - name: nvidia-driver
+    hostPath:
+      path: /usr/local/nvidia
+  volumeMounts:
+  - name: nvidia-driver
+    mountPath: /usr/local/nvidia
+    readOnly: true
+  schedulerName: default-scheduler
+---
+# Kubeflow Pipeline Definition for Property Valuation
+apiVersion: kubeflow.org/v1beta1
+kind: Pipeline
+metadata:
+  name: property-valuation-training
+  namespace: kubeflow
+  annotations:
+    pipelines.kubeflow.org/pipeline_spec: '{"name": "Property Valuation Training Pipeline", "description": "End-to-end pipeline for training property valuation models"}'
+spec:
+  params:
+  - name: data-source
+    type: string
+    default: "s3://property-data/raw/"
+  - name: model-name
+    type: string
+    default: "property-valuation-v1"
+  - name: learning-rate
+    type: float
+    default: 0.001
+  - name: epochs
+    type: int
+    default: 100
+---
+# Kubeflow Experiment Template
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: property-valuation-experiments
+  namespace: kubeflow
+spec:
+  description: "Property valuation model experiments"
+---
+# Katib for Hyperparameter Tuning
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  name: property-valuation-hp-tuning
+  namespace: kubeflow
+spec:
+  algorithm:
+    name: random
+  objective:
+    type: maximize
+    goal: 0.95
+    metricName: accuracy
+  parameters:
+  - name: learning-rate
+    parameterType: double
+    feasibleSpace:
+      min: "0.001"
+      max: "0.01"
+  - name: batch-size
+    parameterType: int
+    feasibleSpace:
+      min: "32"
+      max: "256"
+  - name: num-layers
+    parameterType: int
+    feasibleSpace:
+      min: "2"
+      max: "5"
+  - name: hidden-units
+    parameterType: int
+    feasibleSpace:
+      min: "64"
+      max: "512"
+  maxTrialCount: 50
+  maxFailedTrialCount: 10
+  parallelTrialCount: 5
+---
+# KServe for Model Serving
+apiVersion: "serving.kserve.io/v1beta1"
+kind: InferenceService
+metadata:
+  name: property-valuation-model
+  namespace: kubeflow
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  predictor:
+    tensorflow:
+      storageUri: "s3://kubeflow-models/property-valuation"
+      runtimeVersion: "2.11.0"
+      resources:
+        requests:
+          cpu: "1"
+          memory: "4Gi"
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "2"
+          memory: "8Gi"
+          nvidia.com/gpu: "1"
+    serviceAccountName: kubeflow-sa
+  transformer:
+    containers:
+    - name: transformer-container
+      image: gogidix/property-valuation-transformer:latest
+      env:
+      - name: MODEL_NAME
+        value: "property-valuation-model"
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+  explainer:
+    alibi:
+      type: AnchorTabular
+      runtimeVersion: "1.0.1"
+      config:
+        batch_size: "50"
+        explanation_threshold: "0.95"
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          cpu: "1"
+          memory: "4Gi"
+---
+# KFServing for Batch Prediction
+apiVersion: kubeflow.org/v1beta1
+kind: ScheduledWorkflow
+metadata:
+  name: daily-property-valuation-batch
+  namespace: kubeflow
+spec:
+  workflowSpec:
+    entrypoint: batch-prediction
+    templates:
+    - name: batch-prediction
+      container:
+        image: gogidix/property-valuation-batch:latest
+        env:
+        - name: MODEL_URI
+          value: "s3://kubeflow-models/property-valuation"
+        - name: INPUT_DATA_PATH
+          value: "s3://property-data/daily/"
+        - name: OUTPUT_PATH
+          value: "s3://property-predictions/daily/"
+        - name: BATCH_SIZE
+          value: "1000"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+            nvidia.com/gpu: "2"
+  schedule: "0 2 * * *"  # Daily at 2 AM
+---
+# Kubeflow Training Job Template
+apiVersion: "kubeflow.org/v1"
+kind: "PyTorchJob"
+metadata:
+  name: property-image-recognition-training
+  namespace: kubeflow
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: pytorch
+            image: gogidix/property-image-recognition:latest
+            env:
+            - name: DATASET_PATH
+              value: "/data/property-images"
+            - name: MODEL_PATH
+              value: "/models"
+            - name: EPOCHS
+              value: "100"
+            - name: BATCH_SIZE
+              value: "64"
+            - name: LEARNING_RATE
+              value: "0.001"
+            resources:
+              requests:
+                cpu: "4"
+                memory: "8Gi"
+                nvidia.com/gpu: "1"
+              limits:
+                cpu: "8"
+                memory: "16Gi"
+                nvidia.com/gpu: "2"
+            volumeMounts:
+            - name: dataset
+              mountPath: /data
+            - name: model-storage
+              mountPath: /models
+          volumes:
+          - name: dataset
+            persistentVolumeClaim:
+              claimName: property-images-pvc
+          - name: model-storage
+            persistentVolumeClaim:
+              claimName: model-training-pvc
+    Worker:
+      replicas: 3
+      template:
+        spec:
+          containers:
+          - name: pytorch
+            image: gogidix/property-image-recognition:latest
+            resources:
+              requests:
+                cpu: "2"
+                memory: "4Gi"
+                nvidia.com/gpu: "1"
+              limits:
+                cpu: "4"
+                memory: "8Gi"
+                nvidia.com/gpu: "1"
+---
+# Persistent Volume Claims for ML Workloads
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: property-images-pvc
+  namespace: kubeflow
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 10Ti
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-training-pvc
+  namespace: kubeflow
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 5Ti
+---
+# Kubeflow Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubeflow-sa
+  namespace: kubeflow
+  annotations:
+    iam.amazonaws.com/role: arn:aws:iam::123456789012:role/kubeflow-role
+---
+# Kubeflow RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubeflow-role
+rules:
+- apiGroups: ["kubeflow.org"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["serving.kserve.io"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "configmaps", "secrets"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeflow-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubeflow-role
+subjects:
+- kind: ServiceAccount
+  name: kubeflow-sa
+  namespace: kubeflow

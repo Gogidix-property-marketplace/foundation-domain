@@ -1,0 +1,520 @@
+# Apache Kafka for AI Services (Event Streaming)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: streaming
+data:
+  server.properties: |
+    # Kafka Broker Configuration
+    broker.id=${KAFKA_BROKER_ID}
+    listeners=PLAINTEXT://:9092,CONTROLLER://:9093
+    advertised.listeners=PLAINTEXT://$(POD_NAME).kafka-headless:9092
+    listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    controller.listener.names=CONTROLLER
+    controller.quorum.voters=1@kafka-0.kafka-headless:9093
+    num.network.threads=3
+    num.io.threads=8
+    socket.send.buffer.bytes=102400
+    socket.receive.buffer.bytes=102400
+    socket.request.max.bytes=104857600
+    log.dirs=/var/lib/kafka/data
+    num.partitions=12
+    num.recovery.threads.per.data.dir=1
+    offsets.topic.replication.factor=1
+    transaction.state.log.replication.factor=1
+    transaction.state.log.min.isr=1
+    log.retention.hours=168
+    log.retention.check.interval.ms=300000
+    log.segment.bytes=1073741824
+    log.retention.check.interval.ms=300000
+    auto.create.topics.enable=true
+    default.replication.factor=1
+    min.insync.replicas=1
+    inter.broker.listener.name=PLAINTEXT
+    group.initial.rebalance.delay.ms=0
+    delete.topic.enable=true
+    compression.type=producer
+    log.cleanup.policy=delete
+    log.cleaner.enable=true
+
+  zookeeper.properties: |
+    # Zookeeper Configuration
+    dataDir=/var/lib/zookeeper/data
+    dataLogDir=/var/lib/zookeeper/log
+    tickTime=2000
+    initLimit=10
+    syncLimit=5
+    clientPort=2181
+    maxClientCnxns=1000
+    autopurge.snapRetainCount=3
+    autopurge.purgeInterval=1
+    server.1=kafka-0.kafka-headless:2888:3888
+
+  topics.yaml: |
+    # Kafka Topics Configuration for AI Services
+    apiVersion: kafka.strimzi.io/v1beta2
+    kind: KafkaTopic
+    metadata:
+      name: ai-model-predictions
+      labels:
+        strimzi.io/cluster: kafka
+    spec:
+      partitions: 12
+      replicas: 1
+      config:
+        retention.ms: 604800000  # 7 days
+        segment.bytes: 1073741824  # 1GB
+        cleanup.policy: delete
+        compression.type: producer
+
+    ---
+    apiVersion: kafka.strimzi.io/v1beta2
+    kind: KafkaTopic
+    metadata:
+      name: ai-model-training
+      labels:
+        strimzi.io/cluster: kafka
+    spec:
+      partitions: 6
+      replicas: 1
+      config:
+        retention.ms: 2592000000  # 30 days
+        segment.bytes: 5368709120  # 5GB
+        cleanup.policy: compact
+        compression.type: producer
+
+    ---
+    apiVersion: kafka.strimzi.io/v1beta2
+    kind: KafkaTopic
+    metadata:
+      name: ai-model-metrics
+      labels:
+        strimzi.io/cluster: kafka
+    spec:
+      partitions: 3
+      replicas: 1
+      config:
+        retention.ms: 86400000  # 1 day
+        segment.bytes: 268435456  # 256MB
+        cleanup.policy: delete
+        compression.type: snappy
+
+    ---
+    apiVersion: kafka.strimzi.io/v1beta2
+    kind: KafkaTopic
+    metadata:
+      name: ai-user-events
+      labels:
+        strimzi.io/cluster: kafka
+    spec:
+      partitions: 24
+      replicas: 1
+      config:
+        retention.ms: 604800000  # 7 days
+        segment.bytes: 1073741824  # 1GB
+        cleanup.policy: delete
+        compression.type: producer
+
+    ---
+    apiVersion: kafka.strimzi.io/v1beta2
+    kind: KafkaTopic
+    metadata:
+      name: ai-property-updates
+      labels:
+        strimzi.io/cluster: kafka
+    spec:
+      partitions: 8
+      replicas: 1
+      config:
+        retention.ms: 1209600000  # 14 days
+        segment.bytes: 2147483648  # 2GB
+        cleanup.policy: compact,delete
+        min.compaction.lag.ms: 3600000  # 1 hour
+        compression.type: producer
+
+  init-topics.sh: |
+    #!/bin/bash
+    # Initialize Kafka Topics
+    KAFKA_HOME=/opt/kafka
+
+    # Wait for Kafka to be ready
+    while ! nc -z localhost 9092; do
+      echo "Waiting for Kafka to be ready..."
+      sleep 1
+    done
+
+    # Create topics
+    TOPICS=(
+      "ai-model-predictions:12:7d"
+      "ai-model-training:6:30d"
+      "ai-model-metrics:3:1d"
+      "ai-user-events:24:7d"
+      "ai-property-updates:8:14d"
+      "ai-model-drift:3:30d"
+      "ai-chatbot-conversations:6:90d"
+      "ai-recommendation-events:12:7d"
+    )
+
+    for topic in "${TOPICS[@]}"; do
+      IFS=':' read -r name partitions retention <<< "$topic"
+      echo "Creating topic: $name"
+
+      # Convert retention to milliseconds
+      if [[ $retention == *"d" ]]; then
+        days=${retention%a}
+        retention_ms=$((days * 24 * 60 * 60 * 1000))
+      elif [[ $retention == *"h" ]]; then
+        hours=${retention%h}
+        retention_ms=$((hours * 60 * 60 * 1000))
+      else
+        retention_ms=$retention
+      fi
+
+      # Create topic
+      $KAFKA_HOME/bin/kafka-topics.sh \
+        --create \
+        --bootstrap-server localhost:9092 \
+        --replication-factor 1 \
+        --partitions $partitions \
+        --topic $name \
+        --config retention.ms=$retention_ms \
+        --config cleanup.policy=delete \
+        --config compression.type=producer \
+        --if-not-exists
+    done
+
+    echo "Topics initialized successfully"
+---
+# Zookeeper StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-zookeeper
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: zookeeper
+spec:
+  serviceName: kafka-zookeeper
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+      component: zookeeper
+  template:
+    metadata:
+      labels:
+        app: kafka
+        component: zookeeper
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: zookeeper
+        image: confluentinc/cp-zookeeper:7.4.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 2181
+          name: client
+          protocol: TCP
+        env:
+        - name: ZOOKEEPER_CLIENT_PORT
+          value: "2181"
+        - name: ZOOKEEPER_TICK_TIME
+          value: "2000"
+        - name: ZOOKEEPER_SERVER_ID
+          value: "1"
+        - name: ZOOKEEPER_SERVERS
+          value: "kafka-zookeeper:2888:3888"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        volumeMounts:
+        - name: zookeeper-data
+          mountPath: /var/lib/zookeeper/data
+        - name: zookeeper-log
+          mountPath: /var/lib/zookeeper/log
+        livenessProbe:
+          exec:
+            command:
+            - nc
+            - -z
+            - localhost
+            - "2181"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - nc
+            - -z
+            - localhost
+            - "2181"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: zookeeper-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: zookeeper-log
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 10Gi
+---
+# Kafka StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: broker
+spec:
+  serviceName: kafka-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka
+      component: broker
+  template:
+    metadata:
+      labels:
+        app: kafka
+        component: broker
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.4.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9092
+          name: kafka
+          protocol: TCP
+        - containerPort: 9093
+          name: controller
+          protocol: TCP
+        env:
+        - name: KAFKA_BROKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "kafka-zookeeper:2181"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://$(POD_NAME).kafka-headless:9092"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+        - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+          value: "0"
+        - name: KAFKA_JMX_PORT
+          value: "9991"
+        - name: KAFKA_JMX_HOSTNAME
+          value: localhost
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx4G -Xms2G"
+        - name: KAFKA_JVM_PERFORMANCE_OPTS
+          value: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "4Gi"
+          limits:
+            cpu: "2"
+            memory: "8Gi"
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        - name: kafka-config
+          mountPath: /etc/kafka
+        livenessProbe:
+          exec:
+            command:
+            - kafka-broker-api-versions
+            - --bootstrap-server
+            - localhost:9092
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - kafka-broker-api-versions
+            - --bootstrap-server
+            - localhost:9092
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: kafka-config
+        configMap:
+          name: kafka-config
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+      labels:
+        app: kafka
+        component: broker
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 500Gi
+---
+# Kafka Broker Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: broker
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 9092
+    targetPort: 9092
+    name: kafka
+    protocol: TCP
+  selector:
+    app: kafka
+    component: broker
+---
+# Kafka Headless Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: broker
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 9092
+    targetPort: 9092
+    name: kafka
+    protocol: TCP
+  selector:
+    app: kafka
+    component: broker
+---
+# Zookeeper Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-zookeeper
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: zookeeper
+spec:
+  type: ClusterIP
+  ports:
+  - port: 2181
+    targetPort: 2181
+    name: client
+    protocol: TCP
+  selector:
+    app: kafka
+    component: zookeeper
+---
+# Kafka UI (Optional - for development/monitoring)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+      component: ui
+  template:
+    metadata:
+      labels:
+        app: kafka
+        component: ui
+    spec:
+      containers:
+      - name: kafka-ui
+        image: provectuslabs/kafka-ui:latest
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: KAFKA_CLUSTERS_0_NAME
+          value: "ai-services"
+        - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+          value: "kafka:9092"
+        - name: KAFKA_CLUSTERS_0_ZOOKEEPER
+          value: "kafka-zookeeper:2181"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+---
+# Kafka UI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+  namespace: ai-services
+  labels:
+    app: kafka
+    component: ui
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+    protocol: TCP
+  selector:
+    app: kafka
+    component: ui

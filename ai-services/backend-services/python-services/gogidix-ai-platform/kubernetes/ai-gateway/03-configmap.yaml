@@ -1,0 +1,233 @@
+# AI Gateway Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-gateway-config
+  namespace: ai-services
+  labels:
+    app: ai-gateway
+    component: gateway
+data:
+  # Logging Configuration
+  logging.yaml: |
+    version: 1
+    disable_existing_loggers: false
+    formatters:
+      json:
+        class: pythonjsonlogger.jsonlogger.JsonFormatter
+        format: "%(asctime)s %(name)s %(levelname)s %(message)s"
+      console:
+        class: logging.Formatter
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers:
+      console:
+        class: logging.StreamHandler
+        level: INFO
+        formatter: json
+        stream: ext://sys.stdout
+      file:
+        class: logging.handlers.RotatingFileHandler
+        level: INFO
+        formatter: json
+        filename: /app/logs/ai-gateway.log
+        maxBytes: 10485760  # 10MB
+        backupCount: 5
+    loggers:
+      gogidix_ai:
+        level: INFO
+        handlers: [console, file]
+        propagate: false
+      uvicorn:
+        level: WARNING
+        handlers: [console]
+        propagate: false
+      httpx:
+        level: WARNING
+        handlers: [console]
+        propagate: false
+    root:
+      level: INFO
+      handlers: [console]
+
+  # Rate Limiting Configuration
+  rate-limits.yaml: |
+    # Default rate limits
+    default:
+      requests_per_minute: 100
+      burst_size: 20
+      window_seconds: 60
+
+    # Premium user rate limits
+    premium:
+      requests_per_minute: 1000
+      burst_size: 100
+      window_seconds: 60
+
+    # Admin rate limits
+    admin:
+      requests_per_minute: 10000
+      burst_size: 1000
+      window_seconds: 60
+
+  # Model Routing Configuration
+  routing-config.yaml: |
+    # Load balancing strategies per model
+    load_balancing:
+      property_valuation:
+        strategy: "least_connections"
+        timeout_ms: 5000
+        retry_attempts: 3
+      image_recognition:
+        strategy: "response_time"
+        timeout_ms: 10000
+        retry_attempts: 2
+      nlp:
+        strategy: "round_robin"
+        timeout_ms: 2000
+        retry_attempts: 2
+      chatbot:
+        strategy: "weighted_round_robin"
+        timeout_ms: 8000
+        retry_attempts: 1
+
+  # Traffic Splitting Configuration
+  traffic-splits.yaml: |
+    # A/B testing configurations
+    property_valuation_v2:
+      model_name: "property_valuation"
+      versions:
+        v1: 70  # 70% to version 1
+        v2: 30  # 30% to version 2 (new model)
+      default_version: "v1"
+
+    chatbot_experiment:
+      model_name: "chatbot"
+      versions:
+        gpt3: 50
+        gpt4: 50
+      default_version: "gpt3"
+
+  # Caching Configuration
+  caching.yaml: |
+    # Cache settings per model
+    models:
+      property_valuation:
+        ttl_seconds: 3600  # 1 hour
+        max_size: 10000
+      image_recognition:
+        ttl_seconds: 86400  # 24 hours
+        max_size: 5000
+      nlp:
+        ttl_seconds: 1800  # 30 minutes
+        max_size: 20000
+      chatbot:
+        ttl_seconds: 300  # 5 minutes
+        max_size: 5000
+
+  # Monitoring Configuration
+  monitoring.yaml: |
+    # Metrics collection settings
+    metrics:
+      enabled: true
+      port: 9090
+      path: "/metrics"
+
+    # Model performance tracking
+    model_monitoring:
+      accuracy_threshold: 0.90
+      latency_p95_threshold_ms: 5000
+      error_rate_threshold: 0.05
+      drift_threshold: 0.10
+
+    # Alerting configuration
+    alerts:
+      enabled: true
+      channels:
+        - type: "slack"
+          webhook_url: "${SLACK_WEBHOOK_URL}"
+        - type: "email"
+          smtp_server: "smtp.gogidix.com"
+          recipients: ["ai-team@gogidix.com"]
+
+    # Prometheus scrape configuration
+    prometheus:
+      scrape_interval: "30s"
+      scrape_timeout: "10s"
+      metrics_path: "/metrics"
+
+  # Security Configuration
+  security.yaml: |
+    # CORS settings
+    cors:
+      allow_origins:
+        - "https://app.gogidix.com"
+        - "https://admin.gogidix.com"
+        - "https://partner.gogidix.com"
+      allow_credentials: true
+      allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      allow_headers: ["*"]
+
+    # Security headers
+    security_headers:
+      X-Content-Type-Options: "nosniff"
+      X-Frame-Options: "DENY"
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Content-Security-Policy: "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+
+    # Input validation
+    input_validation:
+      max_request_size_mb: 10
+      max_text_length: 10000
+      allowed_image_formats: ["jpeg", "jpg", "png", "webp"]
+      max_image_size_mb: 10
+
+    # Rate limiting
+    rate_limiting:
+      enabled: true
+      algorithm: "token_bucket"
+      redis_key_prefix: "ai_gateway_rate_limit:"
+
+  # Feature Flags Configuration
+  feature-flags.yaml: |
+    # Feature toggles
+    features:
+      gpu_acceleration: true
+      batch_processing: true
+      model_drift_detection: true
+      bias_detection: true
+      explainable_ai: true
+      a_b_testing: true
+      real_time_monitoring: true
+      multi_language_support: true
+
+    # Experimental features
+    experimental:
+      edge_inference: false
+      federated_learning: false
+      quantized_models: false
+
+  # Performance Configuration
+  performance.yaml: |
+    # Connection pools
+    http_client:
+      max_connections: 1000
+      max_keepalive_connections: 100
+      keepalive_expiry: 30
+      timeout_connect: 5.0
+      timeout_read: 30.0
+      timeout_write: 5.0
+
+    # Request processing
+    request_processing:
+      max_concurrent_requests: 1000
+      request_timeout_ms: 30000
+      max_batch_size: 32
+      batch_timeout_ms: 10
+
+    # Async settings
+    async:
+      max_workers: 4
+      worker_timeout: 30
+      enable_uvloop: true
+      enable_httptools: true

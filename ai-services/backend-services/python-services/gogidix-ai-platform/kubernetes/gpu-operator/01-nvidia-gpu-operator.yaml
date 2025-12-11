@@ -1,0 +1,81 @@
+# NVIDIA GPU Operator Installation
+# First, install the NVIDIA GPU Operator
+
+# Add the NVIDIA Helm repository
+# helm repo add nvidia https://nvidia.github.io/gpu-operator
+# helm repo update
+
+# Install the GPU Operator
+# helm install gpu-operator nvidia/gpu-operator \
+#   --namespace gpu-operator \
+#   --create-namespace \
+#   --set driver.enabled=true \
+#   --set toolkit.enabled=true \
+#   --set devicePlugin.enabled=true \
+#   --set monitoring.enabled=true \
+#   --set migManager.enabled=true \
+#   --set migStrategy=single
+
+# The following manifests will be created by the GPU Operator:
+
+---
+# NVIDIA GPU Operator Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpu-operator
+  labels:
+    name: gpu-operator
+    control-plane: gpu-operator
+---
+# GPU Operator Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gpu-operator
+  namespace: gpu-operator
+---
+# GPU Operator Cluster Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gpu-operator
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "services", "endpoints", "events", "configmaps"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["extensions"]
+  resources: ["deployments", "replicasets", "daemonsets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles", "clusterrolebindings", "rolebindings", "roles"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+- apiGroups: ["scheduling.k8s.io"]
+  resources: ["priorityclasses"]
+  verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+---
+# GPU Operator Cluster Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gpu-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gpu-operator
+subjects:
+- kind: ServiceAccount
+  name: gpu-operator
+  namespace: gpu-operator

@@ -1,0 +1,540 @@
+# MLflow Tracking Server for AI Services
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-platform
+  labels:
+    name: ml-platform
+    environment: production
+    team: ai
+---
+# MLflow PostgreSQL Database
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mlflow-secrets
+  namespace: ml-platform
+type: Opaque
+data:
+  postgres-password: c2VjdXJlX21sZmxvd19wYXNz  # base64 encoded
+  minio-access-key: bWxmbG93X2FjY2Vzcw==  # base64 encoded
+  minio-secret-key: bWxmbG93X3NlY3JldA==  # base64 encoded
+---
+# MLflow ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlflow-config
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: tracking
+data:
+  mlflow.conf: |
+    # MLflow Configuration
+    [server]
+    host = 0.0.0.0
+    port = 5000
+    workers = 4
+    default_artifact_root = s3://mlflow-artifacts
+    file_store_dir = /mlflow/data
+
+    [database]
+    tracking_uri = postgresql://mlflow:secure_mlflow_pass@postgres:5432/mlflow_db
+    tracking_db_uri = postgresql://mlflow:secure_mlflow_pass@postgres:5432/mlflow_db
+
+    [storage]
+    artifact_root = s3://mlflow-artifacts
+    artifact_upload_timeout = 600
+    artifact_download_timeout = 600
+
+    [logging]
+    log_level = INFO
+    log_format = %(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+    [experiment]
+    default_experiment_name = "Gogidix Property Marketplace"
+
+    [model_registry]
+    model_registry_store_uri = postgresql://mlflow:secure_mlflow_pass@postgres:5432/mlflow_db
+
+    [ui]
+    enable_mlflow_auth = false
+    show_mlflow_auth_info = false
+    enable_prometheus = true
+
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name mlflow.gogidix.com;
+
+        location / {
+            proxy_pass http://mlflow-tracking:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Increase timeout for large uploads
+            proxy_read_timeout 600s;
+            proxy_connect_timeout 600s;
+        }
+
+        location /static/ {
+            proxy_pass http://mlflow-tracking:5000/static/;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+---
+# MLflow PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mlflow-postgres
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: postgres
+spec:
+  serviceName: mlflow-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+      component: postgres
+  template:
+    metadata:
+      labels:
+        app: mlflow
+        component: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: mlflow_db
+        - name: POSTGRES_USER
+          value: mlflow
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-secrets
+              key: postgres-password
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: gp3-encrypted
+      resources:
+        requests:
+          storage: 100Gi
+---
+# MinIO for MLflow Artifacts
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-minio
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+      component: minio
+  template:
+    metadata:
+      labels:
+        app: mlflow
+        component: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:RELEASE.2023-10-25T06-33-25Z
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        ports:
+        - containerPort: 9000
+          name: api
+        - containerPort: 9001
+          name: console
+        env:
+        - name: MINIO_ROOT_USER
+          value: mlflow
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-secrets
+              key: minio-secret-key
+        volumeMounts:
+        - name: minio-storage
+          mountPath: /data
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: minio-storage
+        persistentVolumeClaim:
+          claimName: mlflow-minio-pvc
+---
+# MLflow Tracking Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-tracking
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: tracking
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mlflow
+      component: tracking
+  template:
+    metadata:
+      labels:
+        app: mlflow
+        component: tracking
+    spec:
+      serviceAccountName: mlflow
+      containers:
+      - name: mlflow
+        image: python:3.9-slim
+        ports:
+        - containerPort: 5000
+          name: http
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: postgresql://mlflow:secure_mlflow_pass@mlflow-postgres:5432/mlflow_db
+        - name: MLFLOW_BACKEND_STORE_URI
+          value: postgresql://mlflow:secure_mlflow_pass@mlflow-postgres:5432/mlflow_db
+        - name: MLFLOW_DEFAULT_ARTIFACT_ROOT
+          value: s3://mlflow-artifacts
+        - name: MLFLOW_S3_ENDPOINT_URL
+          value: http://mlflow-minio:9000
+        - name: AWS_ACCESS_KEY_ID
+          value: mlflow
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mlflow-secrets
+              key: minio-secret-key
+        - name: MLFLOW_SERVE_HOSTS
+          value: "0.0.0.0"
+        - name: MLFLOW_WORKERS
+          value: "4"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # Install MLflow
+          pip install mlflow[postgres] sqlalchemy psycopg2 boto3 prometheus-client
+
+          # Create MinIO bucket
+          pip install minio
+          python3 -c "
+          from minio import Minio
+          import os
+
+          client = Minio(
+              'mlflow-minio:9000',
+              access_key='mlflow',
+              secret_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+              secure=False
+          )
+
+          if not client.bucket_exists('mlflow-artifacts'):
+              client.make_bucket('mlflow-artifacts')
+          "
+
+          # Start MLflow server
+          mlflow server \
+            --host 0.0.0.0 \
+            --port 5000 \
+            --default-artifact-root s3://mlflow-artifacts \
+            --backend-store-uri postgresql://mlflow:secure_mlflow_pass@mlflow-postgres:5432/mlflow_db \
+            --workers 4 \
+            --gunicorn-opts "--bind 0.0.0.0:5000 --timeout 600"
+        volumeMounts:
+        - name: ml-data
+          mountPath: /mlflow/data
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: ml-data
+        emptyDir: {}
+---
+# MLflow Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-tracking
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: tracking
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "5000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5000
+    targetPort: 5000
+    name: http
+  selector:
+    app: mlflow
+    component: tracking
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-postgres
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: mlflow
+    component: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-minio
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: minio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: api
+  - port: 9001
+    targetPort: 9001
+    name: console
+  selector:
+    app: mlflow
+    component: minio
+---
+# Persistent Volumes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-minio-pvc
+  namespace: ml-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp3-encrypted
+  resources:
+    requests:
+      storage: 1Ti
+---
+# MLflow Model Registry Deployment (for serving models)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-model-server
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: model-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mlflow
+      component: model-server
+  template:
+    metadata:
+      labels:
+        app: mlflow
+        component: model-server
+    spec:
+      containers:
+      - name: model-server
+        image: python:3.9-slim
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: MLFLOW_TRACKING_URI
+          value: http://mlflow-tracking:5000
+        command:
+        - /bin/bash
+        - -c
+        - |
+          pip install mlflow[extras] gunicorn
+
+          # Create model serving script
+          cat > /app/serve_model.py << 'EOF'
+          import mlflow
+          import json
+          from flask import Flask, request, jsonify
+
+          app = Flask(__name__)
+
+          # Load the production model
+          model_uri = "models:/property-valuation/Production"
+          model = mlflow.pyfunc.load(model_uri)
+
+          @app.route('/health')
+          def health():
+              return jsonify({"status": "healthy"})
+
+          @app.route('/predict', methods=['POST'])
+          def predict():
+              try:
+                  data = request.json
+                  predictions = model.predict(data)
+                  return jsonify({
+                      "predictions": predictions.tolist() if hasattr(predictions, 'tolist') else predictions
+                  })
+              except Exception as e:
+                  return jsonify({
+                      "error": str(e)
+                  }), 500
+
+          if __name__ == '__main__':
+              app.run(host='0.0.0.0', port=8080)
+          EOF
+
+          # Start model server
+          python /app/serve_model.py
+        resources:
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+            nvidia.com/gpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-model-server
+  namespace: ml-platform
+  labels:
+    app: mlflow
+    component: model-server
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: mlflow
+    component: model-server
+---
+# MLflow Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlflow
+  namespace: ml-platform
+---
+# MLflow RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mlflow
+  namespace: ml-platform
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mlflow
+  namespace: ml-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mlflow
+subjects:
+- kind: ServiceAccount
+  name: mlflow
+  namespace: ml-platform
