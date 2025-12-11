@@ -1,0 +1,505 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE SECURITY CONFIGURATION ✨
+# Mission-Critical Security Framework Configuration
+# Architectural Excellence: Google Identity + Netflix Security Standards
+
+# =====================================================
+# SPRING SECURITY CONFIGURATION
+# =====================================================
+spring:
+  security:
+    # OAuth2 Resource Server Configuration
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:https://auth.gogidix.com}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://auth.gogidix.com/.well-known/jwks.json}
+
+      # Client Configuration (if this is also an OAuth2 client)
+      client:
+        provider:
+          gogidix:
+            issuer-uri: ${OAUTH2_ISSUER_URI:https://auth.gogidix.com}
+            authorization-uri: ${OAUTH2_AUTH_URI:https://auth.gogidix.com/oauth/authorize}
+            token-uri: ${OAUTH2_TOKEN_URI:https://auth.gogidix.com/oauth/token}
+            user-info-uri: ${OAUTH2_USER_INFO_URI:https://auth.gogidix.com/userinfo}
+            jwk-set-uri: ${OAUTH2_JWK_SET_URI:https://auth.gogidix.com/.well-known/jwks.json}
+            user-name-attribute: ${OAUTH2_USERNAME_ATTR:sub}
+
+        registration:
+          gogidix-web:
+            provider: gogidix
+            client-id: ${OAUTH2_CLIENT_ID:}
+            client-secret: ${OAUTH2_CLIENT_SECRET:}
+            authorization-grant-type: ${OAUTH2_GRANT_TYPE:authorization_code}
+            redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/login/oauth2/code/gogidix-web}
+            scope: ${OAUTH2_SCOPES:openid,profile,email}
+
+          gogidix-service:
+            provider: gogidix
+            client-id: ${OAUTH2_SERVICE_CLIENT_ID:}
+            client-secret: ${OAUTH2_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            scope: ${OAUTH2_SERVICE_SCOPES:server}
+
+    # CSRF Configuration
+    csrf:
+      enabled: ${CSRF_ENABLED:true}
+      token-repository: ${CSRF_TOKEN_REPOSITORY:httpSession}
+      require-csrf-protection: ${CSRF_REQUIRE_PROTECTION:true}
+
+      # CSRF Exclusions
+      ignoring:
+        - /actuator/**
+        - /api/public/**
+        - /health/**
+
+    # CORS Configuration
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://app.gogidix.com}
+      allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+      allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+      allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+    # Session Configuration
+    session:
+      store-type: ${SESSION_STORE_TYPE:redis} # redis, jdbc, mongo, none
+      timeout: ${SESSION_TIMEOUT:1800} # 30 minutes
+      cookie:
+        name: ${SESSION_COOKIE_NAME:GOGIDIX-SESSION}
+        http-only: ${SESSION_COOKIE_HTTP_ONLY:true}
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: ${SESSION_COOKIE_SAME_SITE:lax} # none, lax, strict
+
+# =====================================================
+# GOGIDIX PLATFORM SECURITY CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    security:
+      # JWT Configuration
+      jwt:
+        secret: ${GOGIDIX_JWT_SECRET:} # Must be 64+ characters for HS256
+        issuer: ${GOGIDIX_JWT_ISSUER:gogidix-platform}
+        audience: ${GOGIDIX_JWT_AUDIENCE:gogidix-users}
+
+        # Token Expiration
+        access-token-expiration: ${GOGIDIX_ACCESS_TOKEN_EXPIRATION:PT1H} # 1 hour
+        refresh-token-expiration: ${GOGIDIX_REFRESH_TOKEN_EXPIRATION:P7D} # 7 days
+        remember-me-token-expiration: ${GOGIDIX_REMEMBER_ME_EXPIRATION:P30D} # 30 days
+
+        # Token Rotation
+        rotation-enabled: ${GOGIDIX_TOKEN_ROTATION_ENABLED:true}
+        rotation-grace-period: ${GOGIDIX_TOKEN_ROTATION_GRACE:PT5M}
+
+        # Algorithm
+        algorithm: ${GOGIDIX_JWT_ALGORITHM:HS256}
+
+      # Password Security
+      password:
+        argon2:
+          memory: ${ARGON2_MEMORY:65536} # 64MB
+          parallelism: ${ARGON2_PARALLELISM:4}
+          iterations: ${ARGON2_ITERATIONS:3}
+          salt-length: ${ARGON2_SALT_LENGTH:16}
+          hash-length: ${ARGON2_HASH_LENGTH:32}
+
+        # Password Policies
+        policies:
+          min-length: ${PASSWORD_MIN_LENGTH:8}
+          max-length: ${PASSWORD_MAX_LENGTH:128}
+          require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:true}
+          require-lowercase: ${PASSWORD_REQUIRE_LOWERCASE:true}
+          require-digits: ${PASSWORD_REQUIRE_DIGITS:true}
+          require-special: ${PASSWORD_REQUIRE_SPECIAL:true}
+          forbid-whitespace: ${PASSWORD_FORBID_WHITESPACE:true}
+
+      # Rate Limiting
+      rate-limit:
+        enabled: ${RATE_LIMIT_ENABLED:true}
+
+        # Global Rate Limits
+        global:
+          requests-per-minute: ${RATE_LIMIT_GLOBAL_RPM:100}
+          burst-capacity: ${RATE_LIMIT_GLOBAL_BURST:200}
+
+        # API-Specific Rate Limits
+        endpoints:
+          authentication:
+            login:
+              requests-per-minute: ${RATE_LIMIT_AUTH_LOGIN_RPM:10}
+              burst-capacity: ${RATE_LIMIT_AUTH_LOGIN_BURST:20}
+            registration:
+              requests-per-minute: ${RATE_LIMIT_AUTH_REGISTER_RPM:5}
+              burst-capacity: ${RATE_LIMIT_AUTH_REGISTER_BURST:10}
+            password-reset:
+              requests-per-minute: ${RATE_LIMIT_AUTH_RESET_RPM:3}
+              burst-capacity: ${RATE_LIMIT_AUTH_RESET_BURST:5}
+
+          api:
+            public:
+              requests-per-minute: ${RATE_LIMIT_API_PUBLIC_RPM:60}
+            authenticated:
+              requests-per-minute: ${RATE_LIMIT_API_AUTH_RPM:1000}
+            premium:
+              requests-per-minute: ${RATE_LIMIT_API_PREMIUM_RPM:5000}
+
+      # Role-Based Access Control (RBAC)
+      rbac:
+        enabled: ${RBAC_ENABLED:true}
+        cache-enabled: ${RBAC_CACHE_ENABLED:true}
+        cache-ttl: ${RBAC_CACHE_TTL:PT5M}
+
+        # Default Roles
+        default-roles: ${RBAC_DEFAULT_ROLES:USER}
+
+        # Role Hierarchy
+        hierarchy:
+          SUPER_ADMIN: [ADMIN, SYSTEM_ADMIN]
+          ADMIN: [MODERATOR, PROPERTY_MANAGER]
+          PROPERTY_MANAGER: [AGENT]
+          MODERATOR: [VERIFIED_USER]
+          VERIFIED_USER: [USER]
+
+      # Encryption Configuration
+      encryption:
+        # Master Key
+        master-key: ${ENCRYPTION_MASTER_KEY:} # Must be 32 bytes for AES-256
+
+        # Key Rotation
+        rotation-interval: ${ENCRYPTION_ROTATION_INTERVAL:P90D}
+
+        # Algorithm
+        algorithm: ${ENCRYPTION_ALGORITHM:AES-256-GCM}
+
+      # Audit Logging
+      audit:
+        enabled: ${AUDIT_ENABLED:true}
+        level: ${AUDIT_LEVEL:INFO}
+
+        # Events to Audit
+        events:
+          authentication: ${AUDIT_AUTH_EVENTS:true}
+          authorization: ${AUDIT_AUTHZ_EVENTS:true}
+          data-access: ${AUDIT_DATA_ACCESS:false}
+          system-changes: ${AUDIT_SYSTEM_CHANGES:true}
+
+        # Retention
+        retention-days: ${AUDIT_RETENTION_DAYS:365}
+
+        # Storage
+        storage: ${AUDIT_STORAGE:database} # database, file, splunk
+
+      # Multi-Factor Authentication (MFA)
+      mfa:
+        enabled: ${MFA_ENABLED:true}
+        required-for-roles: ${MFA_REQUIRED_ROLES:ADMIN,SUPER_ADMIN}
+        issuer: ${MFA_ISSUER:Gogidix Platform}
+        time-window: ${MFA_TIME_WINDOW:30}
+
+      # Session Management
+      sessions:
+        # Concurrent Sessions
+        max-concurrent-sessions: ${MAX_CONCURRENT_SESSIONS:5}
+        prevent-concurrent-login: ${PREVENT_CONCURRENT_LOGIN:false}
+
+        # Session Fixation
+        session-fixation-protection: ${SESSION_FIXATION_PROTECTION:newSession}
+
+        # Remember Me
+        remember-me:
+          enabled: ${REMEMBER_ME_ENABLED:true}
+          token-validity: ${REMEMBER_ME_TOKEN_VALIDITY:P30D}
+          cookie-name: ${REMEMBER_ME_COOKIE_NAME:remember-me}
+
+# =====================================================
+# SECURITY HEADERS CONFIGURATION
+# =====================================================
+# These headers are automatically configured via Spring Security
+# Additional custom headers can be configured here
+
+security:
+  headers:
+    # Strict-Transport-Security
+    strict-transport-security:
+      enabled: ${HSTS_ENABLED:true}
+      max-age: ${HSTS_MAX_AGE:31536000}
+      include-subdomains: ${HSTS_INCLUDE_SUBDOMAINS:true}
+      preload: ${HSTS_PRELOAD:false}
+
+    # Content Security Policy
+    content-security-policy:
+      enabled: ${CSP_ENABLED:true}
+      policy: ${CSP_POLICY:default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:}
+
+    # X-Frame-Options
+    frame-options:
+      enabled: ${X_FRAME_OPTIONS_ENABLED:true}
+      mode: ${X_FRAME_OPTIONS_MODE:DENY} # DENY, SAMEORIGIN, ALLOW-FROM
+
+    # X-Content-Type-Options
+    content-type-options:
+      enabled: ${X_CONTENT_TYPE_OPTIONS_ENABLED:true}
+
+    # X-XSS-Protection
+    xss-protection:
+      enabled: ${X_XSS_PROTECTION_ENABLED:true}
+      mode: ${X_XSS_PROTECTION_MODE:block}
+
+    # Referrer Policy
+    referrer-policy:
+      enabled: ${REFERRER_POLICY_ENABLED:true}
+      policy: ${REFERRER_POLICY:strict-origin-when-cross-origin}
+
+# =====================================================
+# API SECURITY CONFIGURATION
+# =====================================================
+api:
+  security:
+    # Key Authentication (for API keys)
+    key-authentication:
+      enabled: ${API_KEY_AUTH_ENABLED:false}
+      header-name: ${API_KEY_HEADER:X-API-Key}
+      parameter-name: ${API_KEY_PARAM:api_key}
+
+    # IP Allowlist/Blocklist
+    ip-filter:
+      enabled: ${IP_FILTER_ENABLED:false}
+      allowlist: ${IP_ALLOWLIST:}
+      blocklist: ${IP_BLOCKLIST:}
+
+    # Request Validation
+    validation:
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+      allowed-methods: ${ALLOWED_METHODS:GET,POST,PUT,DELETE}
+      allowed-content-types: ${ALLOWED_CONTENT_TYPES:application/json,application/xml}
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC SECURITY CONFIGURATION
+# =====================================================
+---
+# Development Environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+# Relaxed security for development
+spring:
+  security:
+    csrf:
+      enabled: false
+  session:
+    store-type: none
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/auth
+
+gogidix:
+  platform:
+    security:
+      jwt:
+        secret: dev-secret-key-that-is-at-least-64-characters-long-for-security-purposes
+      password:
+        policies:
+          min-length: 6
+      rate-limit:
+        enabled: false
+      audit:
+        enabled: true
+        level: DEBUG
+
+security:
+  headers:
+    hsts:
+      enabled: false
+
+---
+# Test Environment
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# Disabled security for tests
+spring:
+  security:
+    csrf:
+      enabled: false
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://test-auth:8080
+
+gogidix:
+  platform:
+    security:
+      jwt:
+        secret: test-secret-key-for-testing-purposes-only-64-chars
+      rate-limit:
+        enabled: false
+      audit:
+        enabled: false
+
+---
+# Staging Environment
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+# Production-like security for staging
+gogidix:
+  platform:
+    security:
+      jwt:
+        issuer: https://staging-auth.gogidix.com
+      rate-limit:
+        enabled: true
+        global:
+          requests-per-minute: 200
+      audit:
+        enabled: true
+        level: INFO
+      mfa:
+        enabled: true
+        required-for-roles: ADMIN
+
+---
+# Production Environment
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Maximum security for production
+gogidix:
+  platform:
+    security:
+      jwt:
+        issuer: https://auth.gogidix.com
+        access-token-expiration: PT15M # Shorter for production
+        refresh-token-expiration: P3D
+        rotation-enabled: true
+      password:
+        policies:
+          min-length: 12
+          require-special: true
+      rate-limit:
+        enabled: true
+        global:
+          requests-per-minute: 100
+      rbac:
+        cache-enabled: true
+        cache-ttl: PT1M
+      audit:
+        enabled: true
+        level: WARN
+        retention-days: 2550 # 7 years
+      mfa:
+        enabled: true
+        required-for-roles: USER,AGENT,ADMIN,MODERATOR,PROPERTY_MANAGER,SYSTEM_ADMIN,SUPER_ADMIN
+        time-window: 60
+      sessions:
+        max-concurrent-sessions: 3
+        prevent-concurrent-login: true
+
+security:
+  headers:
+    strict-transport-security:
+      enabled: true
+      max-age: 31536000
+      include-subdomains: true
+      preload: true
+    content-security-policy:
+      enabled: true
+      policy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; font-src 'self';"
+    frame-options:
+      mode: DENY
+    xss-protection:
+      mode: block
+
+api:
+  security:
+    key-authentication:
+      enabled: true
+    ip-filter:
+      enabled: true
+
+---
+# Kubernetes Environment
+spring:
+  config:
+    activate:
+      on-profile: kubernetes
+
+# Use Kubernetes secrets for security configuration
+gogidix:
+  platform:
+    security:
+      jwt:
+        secret: ${GOGIDIX_JWT_SECRET}
+        issuer: ${JWT_ISSUER_URI}
+      encryption:
+        master-key: ${ENCRYPTION_MASTER_KEY}
+
+# Kubernetes-specific session storage
+spring:
+  session:
+    store-type: redis
+    timeout: 1800
+
+---
+# High Security Environment
+spring:
+  config:
+    activate:
+      on-profile: high-security
+
+# Maximum security configuration
+gogidix:
+  platform:
+    security:
+      jwt:
+        access-token-expiration: PT5M # Very short
+        refresh-token-expiration: PT1H
+        rotation-enabled: true
+        rotation-grace-period: PT1M
+      password:
+        policies:
+          min-length: 16
+          max-length: 64
+      rbac:
+        cache-enabled: false # Always check database
+      audit:
+        enabled: true
+        level: INFO
+        retention-days: 3650 # 10 years
+      mfa:
+        enabled: true
+        required-for-roles: USER
+        time-window: 30
+      sessions:
+        max-concurrent-sessions: 1
+        prevent-concurrent-login: true
+        session-fixation-protection: migrateSession
+
+# API Security
+api:
+  security:
+    ip-filter:
+      enabled: true
+      allowlist: ${ALLOWED_IPS:}
+
+# Rate Limiting - Very Strict
+gogidix:
+  platform:
+    security:
+      rate-limit:
+        global:
+          requests-per-minute: 30
+        endpoints:
+          authentication:
+            login:
+              requests-per-minute: 5

@@ -1,0 +1,526 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE PERFORMANCE CONFIGURATION ✨
+# Mission-Critical Performance Optimization Framework
+# Architectural Excellence: Google Performance Standards + Netflix Optimizations
+
+# =====================================================
+# CACHE CONFIGURATION
+# =====================================================
+spring:
+  # Primary Cache Configuration
+  cache:
+    type: ${CACHE_TYPE:redis}
+    cache-names:
+      - user-cache
+      - property-cache
+      - search-cache
+      - config-cache
+      - session-cache
+      - api-response-cache
+      - permission-cache
+      - rate-limit-cache
+
+    # Redis Configuration
+    redis:
+      time-to-live: ${CACHE_TTL:PT10M}
+      key-prefix: ${CACHE_KEY_PREFIX:gogidix:}
+      use-key-prefix: true
+      cache-null-values: false
+      load-on-startup: ${CACHE_LOAD_ON_STARTUP:false}
+
+      # Redis Connection
+      connection:
+        timeout: ${REDIS_CONNECTION_TIMEOUT:5000ms}
+        so-timeout: ${REDIS_SOCKET_TIMEOUT:5000ms}
+        host: ${REDIS_HOST:localhost}
+        port: ${REDIS_PORT:6379}
+        password: ${REDIS_PASSWORD:}
+        database: ${REDIS_DATABASE:0}
+        ssl: ${REDIS_SSL_ENABLED:false}
+
+      # Redis Pool
+      lettuce:
+        pool:
+          enabled: ${REDIS_POOL_ENABLED:true}
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:5}
+          max-wait: ${REDIS_POOL_MAX_WAIT:5000ms}
+          time-between-eviction-runs: ${REDIS_POOL_EVICTION_RUN:30000}
+          min-evictable-idle-time: ${REDIS_POOL_MIN_EVICTION:60000}
+
+    # Caffeine Configuration (for in-memory caching)
+    caffeine:
+      spec: maximumSize=${CAFFEINE_MAX_SIZE:1000},expireAfterWrite=${CAFFEINE_EXPIRE_WRITE:5m},recordStats=${CAFFEINE_STATS:true},refreshAfterWrite=${CAFFEINE_REFRESH:3m}
+
+# =====================================================
+# GOGIDIX PLATFORM PERFORMANCE CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    performance:
+      # Connection Pool Configuration
+      connection-pools:
+        database:
+          max-pool-size: ${DB_MAX_POOL_SIZE:20}
+          min-idle: ${DB_MIN_IDLE:5}
+          max-lifetime: ${DB_MAX_LIFETIME:1800000}
+          leak-detection-threshold: ${DB_LEAK_DETECTION:60000}
+
+        http:
+          max-connections: ${HTTP_MAX_CONNECTIONS:200}
+          max-per-route: ${HTTP_MAX_PER_ROUTE:50}
+          connection-timeout: ${HTTP_CONNECTION_TIMEOUT:10000}
+          socket-timeout: ${HTTP_SOCKET_TIMEOUT:30000}
+          request-timeout: ${HTTP_REQUEST_TIMEOUT:60000}
+
+        kafka:
+          producer-pool-size: ${KAFKA_PRODUCER_POOL:10}
+          consumer-pool-size: ${KAFKA_CONSUMER_POOL:20}
+
+      # Batch Processing Configuration
+      batch:
+        enabled: ${BATCH_PROCESSING_ENABLED:true}
+        default-size: ${BATCH_DEFAULT_SIZE:100}
+        max-size: ${BATCH_MAX_SIZE:1000}
+        timeout: ${BATCH_TIMEOUT:30000}
+
+      # Async Processing Configuration
+      async:
+        core-pool-size: ${ASYNC_CORE_POOL_SIZE:8}
+        max-pool-size: ${ASYNC_MAX_POOL_SIZE:32}
+        queue-capacity: ${ASYNC_QUEUE_CAPACITY:100}
+        thread-name-prefix: async-
+        keep-alive: ${ASYNC_KEEP_ALIVE:60s}
+
+      # Scheduled Tasks Configuration
+      scheduled:
+        pool-size: ${SCHEDULED_POOL_SIZE:4}
+        thread-name-prefix: scheduled-
+
+      # Performance Monitoring
+      monitoring:
+        slow-query-threshold: ${SLOW_QUERY_THRESHOLD:1000}
+        slow-endpoint-threshold: ${SLOW_ENDPOINT_THRESHOLD:2000}
+        memory-usage-threshold: ${MEMORY_THRESHOLD:0.8}
+        cpu-usage-threshold: ${CPU_THRESHOLD:0.7}
+
+      # Response Time Optimization
+      response-time:
+        warning-threshold: ${RESPONSE_TIME_WARNING:1000}
+        critical-threshold: ${RESPONSE_TIME_CRITICAL:5000}
+        sampling-percentage: ${RESPONSE_TIME_SAMPLING:0.1}
+
+      # Throughput Configuration
+      throughput:
+        requests-per-second: ${THROUGHPUT_RPS:1000}
+        max-burst: ${THROUGHPUT_BURST:5000}
+        rate-limiting-enabled: ${THROUGHPUT_RATE_LIMITING:true}
+
+# =====================================================
+# JVM PERFORMANCE CONFIGURATION
+# =====================================================
+jvm:
+  # Heap Configuration
+  heap:
+    initial-size: ${JVM_HEAP_INITIAL:2g}
+    max-size: ${JVM_HEAP_MAX:8g}
+    new-size: ${JVM_HEAP_NEW:512m}
+    max-new-size: ${JVM_HEAP_NEW_MAX:512m}
+    eden-to-survivor-ratio: ${JVM_EDEN_RATIO:8}
+    survivor-ratio: ${JVM_SURVIVOR_RATIO:1}
+
+  # Garbage Collection
+  gc:
+    algorithm: ${JVM_GC_ALGORITHM:G1GC}
+    max-gc-pause-millis: ${JVM_GC_PAUSE:200}
+    g1-heap-region-size: ${JVM_G1_REGION_SIZE:16m}
+    parallel-threads: ${JVM_GC_THREADS:4}
+    concurrent-threads: ${JVM_GC_CONCURRENT_THREADS:4}
+
+  # Metaspace Configuration
+  metaspace:
+    initial-size: ${JVM_METASPACE_INITIAL:256m}
+    max-size: ${JVM_METASPACE_MAX:512m}
+
+  # Direct Memory
+  direct:
+    max-size: ${JVM_DIRECT_MAX:1g}
+
+# =====================================================
+# TOMCAT PERFORMANCE CONFIGURATION
+# =====================================================
+server:
+  tomcat:
+    # Thread Configuration
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+      min-spare: ${TOMCAT_MIN_SPARE_THREADS:20}
+      max-connections: ${TOMCAT_MAX_CONNECTIONS:8192}
+      accept-count: ${TOMCAT_ACCEPT_COUNT:100}
+
+    # Connection Configuration
+    connection-timeout: ${TOMCAT_CONNECTION_TIMEOUT:20000}
+    max-keep-alive-requests: ${TOMCAT_MAX_KEEP_ALIVE:100}
+    keep-alive-timeout: ${TOMCAT_KEEP_ALIVE_TIMEOUT:30000}
+    max-http-form-post-size: ${TOMCAT_MAX_POST_SIZE:20971520} # 20MB
+
+    # Performance Configuration
+    max-swallow-size: ${TOMCAT_MAX_SWALLOW_SIZE:1048576} # 1MB
+    max-http-header-size: ${TOMCAT_MAX_HEADER_SIZE:8192}
+    max-trailers: ${TOMCAT_MAX_TRAILERS:200}
+
+    # JNDI Configuration
+    jndi:
+      remote: ${TOMCAT_JNDI_REMOTE:false}
+
+    # Resource Configuration
+    resource:
+      auth: ${TOMCAT_RESOURCE_AUTH:true}
+      allow-caching: ${TOMCAT_RESOURCE_CACHING:true}
+
+    # Session Configuration
+    session:
+      cookie:
+        http-only: ${TOMCAT_COOKIE_HTTP_ONLY:true}
+        secure: ${TOMCAT_COOKIE_SECURE:true}
+        same-site: ${TOMCAT_COOKIE_SAME_SITE:lax}
+      timeout: ${TOMCAT_SESSION_TIMEOUT:1800}
+
+    # Access Log Configuration
+    accesslog:
+      enabled: ${TOMCAT_ACCESS_LOG_ENABLED:false}
+      pattern: ${TOMCAT_ACCESS_LOG_PATTERN:combined}
+      prefix: ${TOMCAT_ACCESS_LOG_PREFIX:access_log}
+      suffix: ${TOMCAT_ACCESS_LOG_SUFFIX:.txt}
+      rename-on-rotate: ${TOMCAT_ACCESS_LOG_RENAME:true}
+      request-attributes-enabled: ${TOMCAT_ACCESS_LOG_REQUEST_ATTRS:true}
+
+# =====================================================
+# DATABASE PERFORMANCE CONFIGURATION
+# =====================================================
+spring:
+  datasource:
+    hikari:
+      # Pool Size Configuration
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT:600000}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT:20000}
+      max-lifetime: ${HIKARI_MAX_LIFETIME:1800000}
+      leak-detection-threshold: ${HIKARI_LEAK_DETECTION:60000}
+
+      # Performance Configuration
+      connection-test-query: ${HIKARI_CONNECTION_TEST:SELECT 1}
+      validation-timeout: ${HIKARI_VALIDATION_TIMEOUT:5000}
+      connection-init-sql: ${HIKARI_INIT_SQL:}
+
+      # Pool Name
+      pool-name: ${spring.application.name}-pool
+
+  # JPA Performance Configuration
+  jpa:
+    properties:
+      hibernate:
+        # Batch Processing
+        jdbc:
+          batch_size: ${JPA_BATCH_SIZE:50}
+          versioned-data: ${JPA_BATCH_VERSIONED:true}
+          order_inserts: ${JPA_ORDER_INSERTS:true}
+          order_updates: ${JPA_ORDER_UPDATES:true}
+
+        # Query Optimization
+        query:
+          plan_cache_max_size: ${JPA_QUERY_CACHE_SIZE:4096}
+          plan_parameter_metadata_max_size: ${JPA_QUERY_PARAM_CACHE_SIZE:128}
+
+        # Statistics
+        generate_statistics: ${JPA_GENERATE_STATS:false}
+        session:
+          events:
+            log:
+              statement:
+                format_sql: ${JPA_FORMAT_SQL:false}
+
+        # Cache Configuration
+        cache:
+          use_second_level_cache: ${JPA_L2_CACHE_ENABLED:false}
+          use_query_cache: ${JPA_QUERY_CACHE_ENABLED:false}
+          region:
+            factory_class: ${JPA_CACHE_FACTORY:org.hibernate.cache.ehcache.EhCacheRegionFactory}
+        query_cache_factory: ${JPA_QUERY_CACHE_FACTORY:org.hibernate.cache.ehcache.internal.StandardQueryCacheFactory}
+
+        # Connection Configuration
+        connection:
+          provider_disables_autocommit: ${JPA_DISABLE_AUTOCOMMIT:true}
+
+        # Fetch Configuration
+        default_batch_fetch_size: ${JPA_BATCH_FETCH_SIZE:32}
+        fetch_size: ${JPA_FETCH_SIZE:100}
+
+# =====================================================
+# REDIS PERFORMANCE CONFIGURATION
+# =====================================================
+spring:
+  data:
+    redis:
+      lettuce:
+        pool:
+          time-between-eviction-runs: ${REDIS_EVICTION_RUN:30000}
+          min-evictable-idle-time: ${REDIS_MIN_EVICTION:60000}
+
+        # Cluster Configuration (if applicable)
+        cluster:
+          refresh:
+            adaptive: ${REDIS_CLUSTER_REFRESH_ADAPTIVE:true}
+            period: ${REDIS_CLUSTER_REFRESH_PERIOD:30000}
+
+        # Sentinel Configuration (if applicable)
+        sentinel:
+          master: ${REDIS_SENTINEL_MASTER:}
+          nodes: ${REDIS_SENTINEL_NODES:}
+
+        # Command Timeout
+        shutdown-timeout: ${REDIS_SHUTDOWN_TIMEOUT:100ms}
+
+      # Pub/Sub Configuration
+      pubsub:
+        subscription:
+          executor:
+            core-pool-size: ${REDIS_PUBSUB_CORE_POOL:4}
+            max-pool-size: ${REDIS_PUBSUB_MAX_POOL:16}
+            thread-name-prefix: redis-pubsub-
+
+# =====================================================
+# KAFKA PERFORMANCE CONFIGURATION
+# =====================================================
+spring:
+  kafka:
+    producer:
+      # Throughput Optimization
+      acks: ${KAFKA_PRODUCER_ACKS:all}
+      retries: ${KAFKA_PRODUCER_RETRIES:3}
+      batch-size: ${KAFKA_PRODUCER_BATCH_SIZE:16384}
+      linger-ms: ${KAFKA_PRODUCER_LINGER:10}
+      buffer-memory: ${KAFKA_PRODUCER_BUFFER:33554432}
+      compression-type: ${KAFKA_PRODUCER_COMPRESSION:lz4}
+
+      # Performance Configuration
+      max-in-flight-requests-per-connection: ${KAFKA_PRODUCER_MAX_IN_FLIGHT:5}
+      request-timeout-ms: ${KAFKA_PRODUCER_REQUEST_TIMEOUT:30000}
+
+    consumer:
+      # Throughput Optimization
+      fetch-min-bytes: ${KAFKA_CONSUMER_FETCH_MIN:1}
+      fetch-max-wait: ${KAFKA_CONSUMER_FETCH_WAIT:500}
+      fetch-max-bytes: ${KAFKA_CONSUMER_FETCH_MAX:52428800}
+      max-poll-records: ${KAFKA_CONSUMER_MAX_POLL:100}
+      max-poll-interval: ${KAFKA_CONSUMER_MAX_POLL_INTERVAL:300000}
+
+      # Performance Configuration
+      heartbeat-interval: ${KAFKA_CONSUMER_HEARTBEAT:10000}
+      session-timeout: ${KAFKA_CONSUMER_SESSION_TIMEOUT:30000}
+      connections-max-idle-ms: ${KAFKA_CONSUMER_MAX_IDLE_MS:540000}
+
+    # Streams Configuration
+    streams:
+      num:
+        stream:
+          threads: ${KAFKA_STREAMS_THREADS:4}
+      processing:
+        guarantee: ${KAFKA_PROCESSING_GUARANTEE:exactly_once}
+        liveness:
+          timeout: ${KAFKA_LIVENESS_TIMEOUT:PT30S}
+        session:
+          timeout: ${KAFKA_SESSION_TIMEOUT:PT30S}
+
+      # State Store Configuration
+      state:
+        dir: ${KAFKA_STATE_DIR:/tmp/kafka-streams/${spring.application.name}}
+        cache:
+          max:
+            bytes:
+              buffering: ${KAFKA_CACHE_MAX_BYTES:10485760}
+        retention:
+          ms: ${KAFKA_STATE_RETENTION:86400000} # 24 hours
+
+# =====================================================
+# HTTP CLIENT PERFORMANCE CONFIGURATION
+# =====================================================
+http:
+  client:
+    # Connection Pool Configuration
+    pool:
+      max-total: ${HTTP_CLIENT_MAX_TOTAL:200}
+      default-max-per-route: ${HTTP_CLIENT_MAX_PER_ROUTE:50}
+      connect-timeout: ${HTTP_CLIENT_CONNECT_TIMEOUT:10000}
+      connection-request-timeout: ${HTTP_CLIENT_CONNECTION_TIMEOUT:5000}
+      socket-timeout: ${HTTP_CLIENT_SOCKET_TIMEOUT:30000}
+      validate-after-inactivity: ${HTTP_CLIENT_VALIDATE_AFTER:2000}
+
+    # Keep-Alive Configuration
+    keep-alive:
+      timeout: ${HTTP_KEEP_ALIVE_TIMEOUT:30000}
+      max-connections: ${HTTP_KEEP_ALIVE_MAX:100}
+
+    # Compression
+    compression:
+      enabled: ${HTTP_COMPRESSION_ENABLED:true}
+      min-size: ${HTTP_COMPRESSION_MIN_SIZE:1024}
+
+# =====================================================
+# RESILIENCE4J PERFORMANCE CONFIGURATION
+# =====================================================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: count_based
+        sliding-window-size: ${CIRCUIT_BREAKER_WINDOW:10}
+        minimum-number-of-calls: ${CIRCUIT_BREAKER_MIN_CALLS:5}
+        failure-rate-threshold: ${CIRCUIT_BREAKER_FAILURE_THRESHOLD:50}
+        wait-duration-in-open-state: ${CIRCUIT_BREAKER_WAIT:PT30S}
+        slow-call-duration-threshold: ${CIRCUIT_BREAKER_SLOW_CALL:PT5S}
+        slow-call-rate-threshold: ${CIRCUIT_BREAKER_SLOW_RATE:50}
+        permitted-number-of-calls-in-half-open-state: ${CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        automatic-transition-from-open-to-half-open-enabled: ${CIRCUIT_BREAKER_AUTO_HALF_OPEN:true}
+
+  ratelimiter:
+    configs:
+      default:
+        limit-for-period: ${RATE_LIMITER_PERIOD:10}
+        limit-refresh-period: ${RATE_LIMITER_REFRESH:PT1S}
+        timeout-duration: ${RATE_LIMITER_TIMEOUT:PT3S}
+
+  retry:
+    configs:
+      default:
+        max-attempts: ${RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RETRY_WAIT_DURATION:PT1S}
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: ${TIMEOUT_DURATION:PT10S}
+
+# =====================================================
+# MONITORING PERFORMANCE METRICS
+# =====================================================
+management:
+  metrics:
+    # Performance Metrics
+    metrics:
+      export:
+        prometheus:
+          enabled: ${PROMETHEUS_ENABLED:true}
+          step: ${PROMETHEUS_STEP:30s}
+
+    # Distribution Configuration
+    distribution:
+      percentiles-histogram:
+        http.server.requests: ${HTTP_PERCENTILES_HISTOGRAM:true}
+        spring.data.repository.invocations: ${DATA_PERCENTILES_HISTOGRAM:true}
+        cache: ${CACHE_PERCENTILES_HISTOGRAM:true}
+
+      percentiles:
+        http.server.requests: ${HTTP_PERCENTILES:0.5,0.9,0.95,0.99}
+        spring.data.repository.invocations: ${DATA_PERCENTILES:0.5,0.9,0.95,0.99}
+        cache: ${CACHE_PERCENTILES:0.5,0.9,0.95,0.99}
+
+      sla:
+        http.server.requests: ${HTTP_SLA:10ms,50ms,100ms,200ms,500ms,1000ms}
+
+    # Tags
+    tags:
+      performance: ${PERFORMANCE_TAG:true}
+      environment: ${spring.profiles.active}
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC PERFORMANCE CONFIGURATION
+# =====================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+# Development Performance Configuration
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    properties:
+      hibernate:
+        batch_size: 20
+        generate_statistics: true
+  kafka:
+  producer:
+    batch-size: 4096
+    linger-ms: 0
+  consumer:
+    max-poll-records: 50
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# Test Performance Configuration
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+# Staging Performance Configuration
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 3
+      max-lifetime: 1200000
+  jpa:
+    properties:
+      hibernate:
+        batch_size: 30
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Production Performance Configuration
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      max-lifetime: 1800000
+      leak-detection-threshold: 30000
+
+  jpa:
+    properties:
+      hibernate:
+        batch_size: 50
+        fetch_size: 200
+
+  kafka:
+  producer:
+    batch-size: 32768
+    linger-ms: 10
+    compression-type: lz4
+
+# JVM Production Configuration (typically set via environment variables)
+# JAVA_OPTS="-Xms4g -Xmx8g -XX:+UseG1GC -XX:+UseStringDeduplication -XX:+OptimizeStringConcat -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"

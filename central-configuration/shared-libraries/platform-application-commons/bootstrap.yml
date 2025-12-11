@@ -1,0 +1,260 @@
+# ✨ GOGIDIX PLATFORM - MICROSERVICE BOOTSTRAP CONFIGURATION ✨
+# Mission-Critical Service Bootstrap Configuration
+# Architectural Excellence: Spring Cloud Config + Kubernetes Init Containers
+
+# =====================================================
+# SPRING CLOUD CONFIGURATION
+# =====================================================
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:gogidix-service}
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+    include: ${SPRING_PROFILES_INCLUDE:}
+
+  # Cloud Configuration Server
+  cloud:
+    config:
+      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:true}
+      uri: ${CONFIG_SERVER_URI:http://localhost:8888}
+      label: ${CONFIG_SERVER_LABEL:main}
+      timeout: ${CONFIG_SERVER_TIMEOUT:6000}
+      fail-fast: ${CONFIG_SERVER_FAIL_FAST:false}
+      retry:
+        initial-interval: ${CONFIG_SERVER_RETRY_INITIAL:1000}
+        max-attempts: ${CONFIG_SERVER_RETRY_MAX_ATTEMPTS:6}
+        multiplier: ${CONFIG_SERVER_RETRY_MULTIPLIER:1.1}
+
+      # Configuration Encryption
+      encryption:
+        enabled: ${CONFIG_ENCRYPTION_ENABLED:true}
+
+      # Health Check
+      health:
+        enabled: ${CONFIG_HEALTH_ENABLED:true}
+
+      # Bootstrap Configuration
+      bootstrap:
+        enabled: ${CONFIG_BOOTSTRAP_ENABLED:true}
+
+  # Kubernetes Configuration
+  kubernetes:
+    discovery:
+      enabled: ${KUBERNETES_DISCOVERY_ENABLED:false}
+      all-namespaces: ${KUBERNETES_DISCOVERY_ALL_NAMESPACES:false}
+      include-not-ready-addresses: ${KUBERNETES_DISCOVERY_INCLUDE_NOT_READY:false}
+      primary-port-name: ${KUBERNETES_DISCOVERY_PRIMARY_PORT:http}
+
+    reload:
+      enabled: ${KUBERNETES_RELOAD_ENABLED:false}
+      mode: ${KUBERNETES_RELOAD_MODE:polling}
+      period: ${KUBERNETES_RELOAD_PERIOD:15000}
+
+    config:
+      sources:
+        - name: ${spring.application.name}
+          namespace: ${KUBERNETES_CONFIG_NAMESPACE:default}
+
+# =====================================================
+# SERVICE REGISTRATION AND DISCOVERY
+# =====================================================
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka/}
+      # Additional Eureka servers for high availability
+      # defaultZone: ${EUREKA_CLUSTER:http://eureka1:8761/eureka/,http://eureka2:8761/eureka/,http://eureka3:8761/eureka/}
+
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA:true}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
+    registry-fetch-interval-seconds: ${EUREKA_REGISTRY_FETCH_INTERVAL:30}
+
+    # Health Check Configuration
+    healthcheck:
+      enabled: ${EUREKA_HEALTH_CHECK_ENABLED:true}
+
+    # Connection Configuration
+    eureka-server-connect-timeout-seconds: ${EUREKA_CONNECT_TIMEOUT:5}
+    eureka-server-read-timeout-seconds: ${EUREKA_READ_TIMEOUT:8}
+    eureka-server-total-connections: ${EUREKA_TOTAL_CONNECTIONS:200}
+    eureka-server-total-connections-per-host: ${EUREKA_CONNECTIONS_PER_HOST:50}
+
+    # Filter Configuration
+    filter-only-up-instances: ${EUREKA_FILTER_ONLY_UP_INSTANCES:false}
+
+  instance:
+    hostname: ${HOSTNAME:localhost}
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:true}
+
+    # Lease Configuration
+    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL_INTERVAL:30}
+    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION_DURATION:90}
+
+    # Metadata for service routing and load balancing
+    metadata-map:
+      zone: ${EUREKA_ZONE:development}
+      version: ${project.version:1.0.0}
+      environment: ${spring.profiles.active}
+      management:
+        context-path: ${server.servlet.context-path:}${management.endpoints.web.base-path:/actuator}
+      profile: ${spring.profiles.active}
+      git:
+        commit: ${git.commit.id.abbrev:unknown}
+        branch: ${git.branch:unknown}
+
+    # Status Page URL
+    status-page-url: ${EUREKA_STATUS_PAGE_URL:http://${eureka.instance.hostname}:${server.port}${server.servlet.context-path:}${management.endpoints.web.base-path:/actuator}/info}
+    health-check-url: ${EUREKA_HEALTH_CHECK_URL:http://${eureka.instance.hostname}:${server.port}${server.servlet.context-path:}${management.endpoints.web.base-path:/actuator}/health}
+    home-page-url: ${EUREKA_HOME_PAGE_URL:http://${eureka.instance.hostname}:${server.port}${server.servlet.context-path:}}
+
+    # Secure Configuration
+    secure-port-enabled: ${EUREKA_SECURE_PORT_ENABLED:false}
+    secure-port: ${EUREKA_SECURE_PORT:8443}
+    non-secure-port-enabled: ${EUREKA_NON_SECURE_PORT_ENABLED:true}
+    non-secure-port: ${EUREKA_NON_SECURE_PORT:${server.port:8080}}
+
+# =====================================================
+# LOAD BALANCER CONFIGURATION
+# =====================================================
+spring:
+  cloud:
+    loadbalancer:
+      # Service Discovery
+      cache:
+        enabled: ${LOADBALANCER_CACHE_ENABLED:true}
+        ttl: ${LOADBALANCER_CACHE_TTL:35s}
+        capacity: ${LOADBALANCER_CACHE_CAPACITY:256}
+
+      # Retry Configuration
+      retry:
+        enabled: ${LOADBALANCER_RETRY_ENABLED:true}
+        max-retries-on-next-service-instance: ${LOADBALANCER_MAX_RETRIES:1}
+        max-retries-on-same-service-instance: ${LOADBALANCER_MAX_RETRIES_SAME:0}
+        retry-on-all-operations: ${LOADBALANCER_RETRY_ALL_OPERATIONS:false}
+
+      # Health Check
+      health-check:
+        path: ${LOADBALANCER_HEALTH_CHECK_PATH:/actuator/health}
+        interval: ${LOADBALANCER_HEALTH_CHECK_INTERVAL:30s}
+
+# =====================================================
+# CIRCUIT BREAKER CONFIGURATION
+# =====================================================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: ${CIRCUIT_BREAKER_FAILURE_RATE:50}
+        wait-duration-in-open-state: ${CIRCUIT_BREAKER_WAIT_DURATION:30s}
+        sliding-window-type: count_based
+        sliding-window-size: ${CIRCUIT_BREAKER_SLIDING_WINDOW:10}
+        minimum-number-of-calls: ${CIRCUIT_BREAKER_MIN_CALLS:5}
+        automatic-transition-from-open-to-half-open-enabled: ${CIRCUIT_BREAKER_AUTO_HALF_OPEN:true}
+        permitted-number-of-calls-in-half-open-state: ${CIRCUIT_BREAKER_HALF_OPEN_CALLS:5}
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION OVERRIDES
+# =====================================================
+---
+# Development Environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+spring.cloud.config.enabled: false
+
+---
+# Test Environment
+spring:
+  config:
+    activate:
+      on-profile: test
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+spring.cloud.config.enabled: false
+
+---
+# Staging Environment
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+spring.cloud.config:
+  uri: ${CONFIG_SERVER_URI:http://config-server.staging.gogidix.com:8888}
+  label: staging
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://eureka.staging.gogidix.com:8761/eureka/}
+
+---
+# Production Environment
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+spring.cloud.config:
+  uri: ${CONFIG_SERVER_URI:http://config-server.prod.gogidix.com:8888}
+  label: main
+  fail-fast: true
+  retry:
+    initial-interval: 2000
+    max-attempts: 10
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://eureka.prod.gogidix.com:8761/eureka/}
+      # Production cluster configuration
+      # defaultZone: ${EUREKA_CLUSTER:http://eureka1.prod.gogidix.com:8761/eureka/,http://eureka2.prod.gogidix.com:8761/eureka/,http://eureka3.prod.gogidix.com:8761/eureka/}
+    registry-fetch-interval-seconds: 15
+
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 15
+    lease-expiration-duration-in-seconds: 45
+    metadata-map:
+      zone: production
+      datacenter: ${DATACENTER:us-east-1}
+
+# Enable all resilience patterns in production
+resilience4j.circuitbreaker.configs.default.failure-rate-threshold: 40
+resilience4j.retry.configs.default.max-attempts: 3
+
+---
+# Kubernetes Environment
+spring:
+  config:
+    activate:
+      on-profile: kubernetes
+
+# Enable Kubernetes-specific features
+spring:
+  cloud:
+    kubernetes:
+      discovery:
+        enabled: true
+        all-namespaces: false
+      reload:
+        enabled: true
+        mode: polling
+        period: 15000
+
+# Override Eureka with Kubernetes service discovery
+eureka:
+  client:
+    enabled: false

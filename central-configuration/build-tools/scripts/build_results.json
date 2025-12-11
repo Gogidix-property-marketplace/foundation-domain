@@ -1,0 +1,64 @@
+﻿{
+    "FailedCount":  11,
+    "Timestamp":  "2025-11-28 02:45:34",
+    "SuccessCount":  0,
+    "SuccessRate":  0,
+    "Results":  [
+                    {
+                        "Status":  "Failed",
+                        "Service":  "ConfigManagementService",
+                        "Reason":  "Package error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "DynamicConfigService",
+                        "Reason":  "Package error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "SecretsManagementService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "SecretsRotationService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "FeatureFlagsService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "RateLimitingService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "AuditLoggingConfigService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "BackupConfigService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "DisasterRecoveryConfigService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "EnvironmentVarsService",
+                        "Reason":  "Compilation error"
+                    },
+                    {
+                        "Status":  "Failed",
+                        "Service":  "PolicyManagementService",
+                        "Reason":  "Compilation error"
+                    }
+                ],
+    "TotalServices":  11
+}

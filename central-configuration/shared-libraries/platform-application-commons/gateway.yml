@@ -1,0 +1,528 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE API GATEWAY CONFIGURATION ✨
+# Mission-Critical Gateway Configuration
+# Architectural Excellence: Google API Gateway + Netflix Zuul Standards
+
+# =====================================================
+# SPRING CLOUD GATEWAY CONFIGURATION
+# =====================================================
+spring:
+  cloud:
+    gateway:
+      # Global Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: ${GATEWAY_CORS_ORIGINS:"https://app.gogidix.com","https://admin.gogidix.com","https://api.gogidix.com"}
+            allowedHeaders: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowCredentials: true
+            maxAge: 3600
+
+      # Route Configuration
+      routes:
+        # Property Service Routes
+        - id: property-service-get
+          uri: ${PROPERTY_SERVICE_URL:http://property-service:8080}
+          predicates:
+            - Path=/api/properties/**, /api/v1/properties/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - Retry=3
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${PROPERTY_SERVICE_RATE_LIMIT:100}
+                burstCapacity: ${PROPERTY_SERVICE_BURST:200}
+                tokensConsumed: 1
+                name: ${spring.application.name}-property-rate-limiter
+
+        - id: property-service-post
+          uri: ${PROPERTY_SERVICE_URL:http://property-service:8080}
+          predicates:
+            - Path=/api/properties/**, /api/v1/properties/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${PROPERTY_SERVICE_WRITE_RATE_LIMIT:50}
+                burstCapacity: ${PROPERTY_SERVICE_WRITE_BURST:100}
+                name: ${spring.application.name}-property-write-rate-limiter
+
+        # User Service Routes
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://user-service:8080}
+          predicates:
+            - Path=/api/users/**, /api/v1/users/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - Retry=3
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${USER_SERVICE_RATE_LIMIT:200}
+                burstCapacity: ${USER_SERVICE_BURST:400}
+                name: ${spring.application.name}-user-rate-limiter
+
+        # Booking Service Routes
+        - id: booking-service
+          uri: ${BOOKING_SERVICE_URL:http://booking-service:8080}
+          predicates:
+            - Path=/api/bookings/**, /api/v1/bookings/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - Retry=3
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${BOOKING_SERVICE_RATE_LIMIT:150}
+                burstCapacity: ${BOOKING_SERVICE_BURST:300}
+                name: ${spring.application.name}-booking-rate-limiter
+
+        # Payment Service Routes
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:http://payment-service:8080}
+          predicates:
+            - Path=/api/payments/**, /api/v1/payments/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - Retry=1
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${PAYMENT_SERVICE_RATE_LIMIT:30}
+                burstCapacity: ${PAYMENT_SERVICE_BURST:60}
+                name: ${spring.application.name}-payment-rate-limiter
+            - name: SecureHeadersFilter
+
+        # Search Service Routes
+        - id: search-service
+          uri: ${SEARCH_SERVICE_URL:http://search-service:8080}
+          predicates:
+            - Path=/api/search/**, /api/v1/search/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${SEARCH_SERVICE_RATE_LIMIT:500}
+                burstCapacity: ${SEARCH_SERVICE_BURST:1000}
+                name: ${spring.application.name}-search-rate-limiter
+
+        # Analytics Service Routes
+        - id: analytics-service
+          uri: ${ANALYTICS_SERVICE_URL:http://analytics-service:8080}
+          predicates:
+            - Path=/api/analytics/**, /api/v1/analytics/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${ANALYTICS_SERVICE_RATE_LIMIT:50}
+                burstCapacity: ${ANALYTICS_SERVICE_BURST:100}
+                name: ${spring.application.name}-analytics-rate-limiter
+
+        # Notification Service Routes
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://notification-service:8080}
+          predicates:
+            - Path=/api/notifications/**, /api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${NOTIFICATION_SERVICE_RATE_LIMIT:100}
+                burstCapacity: ${NOTIFICATION_SERVICE_BURST:200}
+                name: ${spring.application.name}-notification-rate-limiter
+
+        # File Upload Routes
+        - id: file-upload-service
+          uri: ${FILE_UPLOAD_SERVICE_URL:http://file-service:8080}
+          predicates:
+            - Path=/api/files/**, /api/v1/files/**
+          filters:
+            - StripPrefix=0
+            - AddRequestHeader=X-Gateway-Version, 1.0.0
+            - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+            - name: AuthFilter
+            - name: RateLimit
+              args:
+                key-resolver: "#{@userKeyResolver.resolve(#request)}"
+                replenishRate: ${FILE_UPLOAD_SERVICE_RATE_LIMIT:20}
+                burstCapacity: ${FILE_UPLOAD_SERVICE_BURST:40}
+                name: ${spring.application.name}-file-upload-rate-limiter
+            - name: FileSizeFilter
+              args:
+                maxSize: ${FILE_UPLOAD_MAX_SIZE:104857600} # 100MB
+
+      # Default Fallback Route
+      default-filters:
+        - AddRequestHeader=X-Gateway-Version, 1.0.0
+        - AddRequestHeader=X-Request-Trace-Id, ${random.uuid}
+        - AddResponseHeader=X-Gateway-Response-Time, #{T(System).currentTimeMillis() - #request.startTime}ms
+
+      # Load Balancer Configuration
+      discovery:
+        locator:
+          enabled: ${GATEWAY_DISCOVERY_ENABLED:true}
+          lower-case-service-id: true
+
+      # HTTP Client Configuration
+      httpclient:
+        connect-timeout: ${GATEWAY_CONNECT_TIMEOUT:5000}
+        response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:10s}
+        pool:
+          type: ${GATEWAY_POOL_TYPE:elastic}
+          max-connections: ${GATEWAY_MAX_CONNECTIONS:500}
+          acquire-timeout: ${GATEWAY_ACQUIRE_TIMEOUT:5000}
+
+      # Metrics Configuration
+      metrics:
+        enabled: ${GATEWAY_METRICS_ENABLED:true}
+        tags:
+          gateway: ${spring.application.name}
+
+      # Websocket Configuration
+      websocket:
+        enabled: ${GATEWAY_WEBSOCKET_ENABLED:false}
+
+# =====================================================
+# GOGIDIX GATEWAY CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    gateway:
+      # Load Balancing Configuration
+      load-balancer:
+        enabled: ${GATEWAY_LOAD_BALANCER_ENABLED:true}
+        algorithm: ${GATEWAY_LB_ALGORITHM:round-robin} # round-robin, weighted, least-connections
+        health-check:
+          enabled: ${GATEWAY_LB_HEALTH_CHECK:true}
+          interval: ${GATEWAY_LB_HEALTH_INTERVAL:30000}
+          timeout: ${GATEWAY_LB_HEALTH_TIMEOUT:5000}
+          failure-threshold: ${GATEWAY_LB_FAILURE_THRESHOLD:3}
+
+        # Weighted Load Balancing
+        weights:
+          property-service: ${GATEWAY_WEIGHT_PROPERTY_SERVICE:5}
+          user-service: ${GATEWAY_WEIGHT_USER_SERVICE:3}
+          booking-service: ${GATEWAY_WEIGHT_BOOKING_SERVICE:4}
+          payment-service: ${GATEWAY_WEIGHT_PAYMENT_SERVICE:2}
+
+      # Circuit Breaker Configuration
+      circuit-breaker:
+        enabled: ${GATEWAY_CIRCUIT_BREAKER_ENABLED:true}
+        failure-threshold: ${GATEWAY_CB_FAILURE_THRESHOLD:50}
+        timeout: ${GATEWAY_CB_TIMEOUT:PT30S}
+        half-open-calls: ${GATEWAY_CB_HALF_OPEN_CALLS:10}
+
+        # Service-specific circuit breakers
+        services:
+          property-service:
+            failure-threshold: ${GATEWAY_CB_PROPERTY_FAILURE:30}
+            timeout: PT10S
+          payment-service:
+            failure-threshold: ${GATEWAY_CB_PAYMENT_FAILURE:10}
+            timeout: PT5S
+          user-service:
+            failure-threshold: ${GATEWAY_CB_USER_FAILURE:40}
+            timeout: PT15S
+
+      # Rate Limiting Configuration
+      rate-limiting:
+        enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+        global:
+          requests-per-minute: ${GATEWAY_GLOBAL_RPM:1000}
+          burst-capacity: ${GATEWAY_GLOBAL_BURST:2000}
+
+        # User-based rate limiting
+        user-based:
+          enabled: ${GATEWAY_USER_RATE_LIMIT:true}
+          default-limits:
+            guest:
+              requests-per-minute: ${GATEWAY_GUEST_RPM:30}
+              burst-capacity: ${GATEWAY_GUEST_BURST:60}
+            user:
+              requests-per-minute: ${GATEWAY_USER_RPM:100}
+              burst-capacity: ${GATEWAY_USER_BURST:200}
+            premium:
+              requests-per-minute: ${GATEWAY_PREMIUM_RPM:500}
+              burst-capacity: ${GATEWAY_PREMIUM_BURST:1000}
+            enterprise:
+              requests-per-minute: ${GATEWAY_ENTERPRISE_RPM:2000}
+              burst-capacity: ${GATEWAY_ENTERPRISE_BURST:5000}
+
+      # Security Configuration
+      security:
+        enabled: ${GATEWAY_SECURITY_ENABLED:true}
+        authentication:
+          enabled: ${GATEWAY_AUTH_ENABLED:true}
+          paths:
+            public: ${GATEWAY_PUBLIC_PATHS:/api/public/**,/health/**,/actuator/health}
+            protected: ${GATEWAY_PROTECTED_PATHS:/api/**}
+
+        # JWT Validation
+        jwt:
+          enabled: ${GATEWAY_JWT_ENABLED:true}
+          secret: ${GATEWAY_JWT_SECRET}
+          issuer: ${GATEWAY_JWT_ISSUER:gogidix-platform}
+          audience: ${GATEWAY_JWT_AUDIENCE:gogidix-api}
+
+        # Request Validation
+        validation:
+          enabled: ${GATEWAY_VALIDATION_ENABLED:true}
+          max-request-size: ${GATEWAY_MAX_REQUEST_SIZE:10MB}
+          allowed-methods: ${GATEWAY_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+          allowed-content-types: ${GATEWAY_ALLOWED_CONTENT_TYPES:application/json,application/xml,text/plain}
+
+      # Request/Response Transformation
+      transformation:
+        enabled: ${GATEWAY_TRANSFORMATION_ENABLED:true}
+        request:
+          add-headers:
+            - name: X-Gateway-Request-Time
+              value: "#{T(System).currentTimeMillis()}"
+            - name: X-Gateway-Instance
+              value: ${GATEWAY_INSTANCE_ID:default}
+            - name: X-Gateway-Version
+              value: "1.0.0"
+
+        response:
+          add-headers:
+            - name: X-Gateway-Response-Time
+              value: "#{T(System).currentTimeMillis() - #request.startTime}ms"
+            - name: X-Powered-By
+              value: "Gogidix API Gateway"
+            - name: X-Rate-Limit-Remaining
+              value: "#{rateLimiter.remainingTokens}"
+
+      # Monitoring and Observability
+      observability:
+        enabled: ${GATEWAY_OBSERVABILITY_ENABLED:true}
+        tracing:
+          enabled: ${GATEWAY_TRACING_ENABLED:true}
+          sampling-probability: ${GATEWAY_TRACING_SAMPLE:0.1}
+          include-request-headers: ${GATEWAY_TRACE_HEADERS:true}
+          include-response-headers: ${GATEWAY_TRACE_RESPONSE_HEADERS:false}
+
+        # Request Logging
+        logging:
+          enabled: ${GATEWAY_LOGGING_ENABLED:true}
+          level: ${GATEWAY_LOG_LEVEL:INFO}
+          include-payload: ${GATEWAY_LOG_PAYLOAD:false}
+          include-headers: ${GATEWAY_LOG_HEADERS:false}
+          max-payload-size: ${GATEWAY_LOG_MAX_PAYLOAD:1024}
+
+# =====================================================
+# NGINX CONFIGURATION (If applicable)
+# =====================================================
+nginx:
+  # Configuration would be generated for deployment
+  configuration:
+    worker-processes: ${NGINX_WORKER_PROCESSES:auto}
+    worker-connections: ${NGINX_WORKER_CONNECTIONS:1024}
+    max-connections: ${NGINX_MAX_CONNECTIONS:4096}
+    keepalive-timeout: ${NGINX_KEEPALIVE_TIMEOUT:65}
+    client-body-buffer-size: ${NGINX_CLIENT_BUFFER_SIZE:128k}
+
+    # Gzip Configuration
+    gzip:
+      enabled: ${NGINX_GZIP_ENABLED:true}
+      types: ${NGINX_GZIP_TYPES:text/plain,text/css,application/json,application/javascript,text/xml,application/xml,text/javascript}
+      min-length: ${NGINX_GZIP_MIN_LENGTH:1000}
+
+    # SSL Configuration
+    ssl:
+      enabled: ${NGINX_SSL_ENABLED:true}
+      protocols: ${NGINX_SSL_PROTOCOLS:TLSv1.2,TLSv1.3}
+      ciphers: ${NGINX_SSL_CIPHERS:ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384}
+      prefer-server-ciphers: ${NGINX_SSL_PREFER_SERVER_CIPHERS:true}
+
+# =====================================================
+# LOAD BALANCER HEALTH CHECKS
+# =====================================================
+spring:
+  cloud:
+    gateway:
+      health-check:
+        enabled: ${GATEWAY_HEALTH_CHECK_ENABLED:true}
+        interval: ${GATEWAY_HEALTH_INTERVAL:PT30S}
+        timeout: ${GATEWAY_HEALTH_TIMEOUT:PT5S}
+        path: ${GATEWAY_HEALTH_PATH:/actuator/health}
+
+      # Service Health Checks
+      services:
+        property-service:
+          health-check-path: ${PROPERTY_SERVICE_HEALTH:/actuator/health}
+          timeout: PT5S
+        user-service:
+          health-check-path: ${USER_SERVICE_HEALTH:/actuator/health}
+          timeout: PT5S
+        booking-service:
+          health-check-path: ${BOOKING_SERVICE_HEALTH:/actuator/health}
+          timeout: PT5S
+
+# =====================================================
+# GATEWAY SERVER CONFIGURATION
+# =====================================================
+server:
+  port: ${GATEWAY_PORT:8080}
+  http2:
+    enabled: true
+  compression:
+    enabled: true
+    mime-types: ${GATEWAY_COMPRESSION_MIME_TYPES:text/html,text/xml,text/plain,text/css,application/javascript,application/json}
+    min-response-size: ${GATEWAY_COMPRESSION_MIN_SIZE:1024}
+
+  # TLS Configuration
+  ssl:
+    enabled: ${GATEWAY_SSL_ENABLED:false}
+    key-store: ${GATEWAY_KEYSTORE:}
+    key-store-password: ${GATEWAY_KEYSTORE_PASSWORD:}
+    key-store-type: ${GATEWAY_KEYSTORE_TYPE:PKCS12}
+    trust-store: ${GATEWAY_TRUSTSTORE:}
+    trust-store-password: ${GATEWAY_TRUSTSTORE_PASSWORD:}
+    trust-store-type: ${GATEWAY_TRUSTSTORE_TYPE:PKCS12}
+    client-auth: ${GATEWAY_CLIENT_AUTH:want}
+
+  # Forward Headers
+  forward-headers-strategy: ${GATEWAY_FORWARD_HEADERS:NATIVE}
+
+# =====================================================
+# MANAGEMENT ENDPOINTS FOR GATEWAY
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway,refresh,env
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: when-authorized
+    gateway:
+      enabled: true
+
+  # Metrics for Gateway
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      component: gateway
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC GATEWAY CONFIGURATION
+# =====================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+gogidix:
+  platform:
+    gateway:
+      rate-limiting:
+        enabled: false
+      security:
+        enabled: false
+      observability:
+        tracing:
+          sampling-probability: 1.0
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+gogidix:
+  platform:
+    gateway:
+      rate-limiting:
+        enabled: false
+      observability:
+        tracing:
+          enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+gogidix:
+  platform:
+    gateway:
+      load-balancer:
+        health-check:
+          enabled: true
+      circuit-breaker:
+        enabled: true
+      rate-limiting:
+        enabled: true
+        global:
+          requests-per-minute: 500
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+gogidix:
+  platform:
+    gateway:
+      load-balancer:
+        health-check:
+          enabled: true
+          interval: PT15S
+      circuit-breaker:
+        enabled: true
+        services:
+          payment-service:
+              failure-threshold: 5
+              timeout: PT2S
+      rate-limiting:
+        enabled: true
+        global:
+          requests-per-minute: 2000
+      security:
+        jwt:
+          secret: ${GATEWAY_JWT_SECRET}
+      observability:
+        tracing:
+          sampling-probability: 0.01 # 1% for production

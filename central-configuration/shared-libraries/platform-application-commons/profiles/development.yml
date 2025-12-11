@@ -1,0 +1,291 @@
+# ✨ GOGIDIX PLATFORM - DEVELOPMENT ENVIRONMENT PROFILE ✨
+# Mission-Critical Development Configuration
+# Optimized for local development and testing
+
+spring:
+  profiles:
+    active: dev
+
+  # =====================================================
+  # DATABASE CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  datasource:
+    # In-memory H2 for development
+    url: jdbc:h2:mem:gogidix_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        generate_statistics: true
+
+  # Disable Flyway in development
+  flyway:
+    enabled: false
+
+  # H2 Console for development
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+  # =====================================================
+  # REDIS CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 5
+          max-idle: 2
+          min-idle: 1
+
+  # =====================================================
+  # CACHE CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=2m,recordStats=true
+
+  # =====================================================
+  # SECURITY CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  security:
+    csrf:
+      enabled: false
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/auth
+
+  session:
+    store-type: none
+    timeout: 3600
+
+  gogidix:
+    platform:
+      security:
+        jwt:
+          secret: dev-secret-key-that-is-at-least-64-characters-long-for-security-purposes-only-in-development
+          access-token-expiration: PT2H
+          refresh-token-expiration: P1D
+        password:
+          policies:
+            min-length: 6
+            max-length: 30
+            require-uppercase: false
+            require-special: false
+            forbid-whitespace: false
+        rate-limit:
+          enabled: false
+        rbac:
+          cache-enabled: false
+        audit:
+          enabled: true
+          level: DEBUG
+
+  # =====================================================
+  # MESSAGING CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      retries: 1
+      linger-ms: 0
+      batch-size: 0
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      group-id: ${spring.application.name}-dev-group
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+  gogidix:
+    platform:
+      messaging:
+        event-bus:
+          enabled: false # Disabled for easier testing
+        message-queue:
+          backend: in-memory
+
+  # =====================================================
+  # MONITORING CONFIGURATION - DEVELOPMENT
+  # =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*" # All endpoints exposed in dev
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "*"
+        allowed-headers: "*"
+
+  endpoint:
+    health:
+      show-details: always
+
+  gogidix:
+    platform:
+      monitoring:
+        metrics:
+          enabled: false # Optional in dev
+        tracing:
+          sampling:
+            probability: 1.0 # 100% sampling
+        logging:
+          structured:
+            enabled: false
+          audit:
+            level: DEBUG
+
+  # =====================================================
+  # LOGGING CONFIGURATION - DEVELOPMENT
+  # =====================================================
+logging:
+  level:
+    # Application logs at DEBUG level
+    com.gogidix: DEBUG
+    com.gogidix.platform: DEBUG
+
+    # Spring logs at DEBUG level
+    org.springframework: DEBUG
+    org.springframework.boot: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.cloud: DEBUG
+
+    # Database logs
+    org.hibernate: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: DEBUG
+
+    # Connection pool
+    com.zaxxer.hikari: DEBUG
+
+    # Messaging
+    org.apache.kafka: INFO
+    org.springframework.kafka: INFO
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n"
+
+  # =====================================================
+  # SERVER CONFIGURATION - DEVELOPMENT
+  # =====================================================
+server:
+  port: 8080
+  servlet:
+    context-path: /${spring.application.name}
+
+  # =====================================================
+  # ACTUATOR CONFIGURATION - DEVELOPMENT
+  # =====================================================
+spring:
+  main:
+    banner-mode: console
+
+  banner:
+    location: classpath:banner-dev.txt
+
+  # =====================================================
+  # DEV TOOLS CONFIGURATION
+  # =====================================================
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/resources
+    livereload:
+      enabled: true
+
+  # =====================================================
+  # PROPERTIES CONFIGURATION - DEVELOPMENT
+  # =====================================================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    default-property-inclusion: NON_NULL
+
+# =====================================================
+# DEVELOPMENT SPECIFIC APPLICATION PROPERTIES
+# =====================================================
+# Enable detailed error pages
+server:
+  error:
+    include-stacktrace: always
+    include-message: always
+    whitelabel:
+      enabled: false
+
+# Development feature flags
+gogidix:
+  platform:
+    features:
+      property-search: true
+      user-profiles: true
+      booking-system: true
+      payment-processing: false # Disabled in dev
+      messaging-system: false
+      analytics-dashboard: true
+      mobile-api: true
+      graphql-api: false
+      webhooks: false
+
+    external-services:
+      payment:
+        provider: stripe-test
+        api-key: test_api_key
+        environment: test
+      notification:
+        email-provider: mailhog
+        sms-provider: twilio-test
+        queue-enabled: false
+      geocoding:
+        provider: test
+        api-key: test_key
+
+# =====================================================
+# DEVELOPMENT TESTING CONFIGURATION
+# =====================================================
+# Test Data Configuration
+test:
+  data:
+    load: ${LOAD_TEST_DATA:true}
+    count: ${TEST_DATA_COUNT:100}
+
+# Mock Service Configuration
+mock:
+  services:
+    enabled: ${MOCK_EXTERNAL_SERVICES:true}
+    response-delay: ${MOCK_RESPONSE_DELAY:0} # No delay in dev
+
+# Performance Testing
+performance:
+  testing:
+    enabled: ${PERFORMANCE_TESTING:false}
+    load-generator: ${LOAD_GENERATOR:none}

@@ -1,0 +1,367 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE APPLICATION CONFIGURATION ✨
+# Mission-Critical Platform Configuration
+# Architectural Excellence: Google Cloud Config + Netflix OSS Standards
+
+# =====================================================
+# SERVER CONFIGURATION
+# =====================================================
+server:
+  # HTTP Server Configuration
+  port: ${SERVER_PORT:8080}
+  http2:
+    enabled: true
+  compression:
+    enabled: true
+    mime-types: text/html, text/xml, text/plain, text/css, application/javascript, application/json
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:/}
+  tomcat:
+    max-threads: ${SERVER_MAX_THREADS:200}
+    min-spare-threads: ${SERVER_MIN_THREADS:10}
+    accept-count: ${SERVER_ACCEPT_COUNT:100}
+    connection-timeout: ${SERVER_CONNECTION_TIMEOUT:20000}
+    max-connections: ${SERVER_MAX_CONNECTIONS:8192}
+    redirect-enabled: true
+
+# =====================================================
+# SPRING BOOT CONFIGURATION
+# =====================================================
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:gogidix-service}
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+    include: security,messaging,monitoring
+
+  # GOGIDIX PLATFORM CONFIGURATION
+  gogidix:
+    platform:
+      name: "Gogidix Property Marketplace"
+      version: "1.0.0"
+      environment: ${GOGIDIX_ENVIRONMENT:development}
+      region: ${GOGIDIX_REGION:us-east-1}
+
+      # Security Configuration
+      security:
+        jwt:
+          secret: ${GOGIDIX_JWT_SECRET:}
+          issuer: "gogidix-platform"
+          audience: "gogidix-users"
+          access-token-expiration: "PT1H"
+          refresh-token-expiration: "P7D"
+
+        password:
+          argon2:
+            memory: 65536
+            parallelism: 4
+            iterations: 3
+
+        rate-limit:
+          enabled: true
+          requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:100}
+          burst-capacity: ${RATE_LIMIT_BURST_CAPACITY:200}
+
+      # Cache Configuration
+      cache:
+        enabled: true
+        provider: ${CACHE_PROVIDER:caffeine}
+        default-ttl: ${CACHE_DEFAULT_TTL:PT5M}
+        max-size: ${CACHE_MAX_SIZE:1000}
+        record-stats: true
+
+      # Monitoring Configuration
+      monitoring:
+        metrics-enabled: ${METRICS_ENABLED:true}
+        tracing-enabled: ${TRACING_ENABLED:true}
+        logging-enabled: ${LOGGING_ENABLED:true}
+        health-checks-enabled: ${HEALTH_CHECKS_ENABLED:true}
+
+      # Feature Flags
+      features:
+        property-search: ${FEATURE_PROPERTY_SEARCH:true}
+        user-profiles: ${FEATURE_USER_PROFILES:true}
+        booking-system: ${FEATURE_BOOKING_SYSTEM:true}
+        payment-processing: ${FEATURE_PAYMENT_PROCESSING:true}
+        messaging-system: ${FEATURE_MESSAGING_SYSTEM:false}
+        analytics-dashboard: ${FEATURE_ANALYTICS_DASHBOARD:false}
+        mobile-api: ${FEATURE_MOBILE_API:true}
+        graphql-api: ${FEATURE_GRAPHQL_API:false}
+        webhooks: ${FEATURE_WEBHOOKS:false}
+
+      # External Service Configuration
+      external-services:
+        payment:
+          provider: ${PAYMENT_PROVIDER:stripe}
+          api-key: ${PAYMENT_API_KEY:}
+          timeout: ${PAYMENT_TIMEOUT:30s}
+
+        notification:
+          email-provider: ${EMAIL_PROVIDER:sendgrid}
+          sms-provider: ${SMS_PROVIDER:twilio}
+          queue-enabled: ${NOTIFICATION_QUEUE_ENABLED:true}
+
+        geocoding:
+          provider: ${GEOCODING_PROVIDER:google}
+          api-key: ${GEOCODING_API_KEY:}
+          cache-ttl: ${GEOCODING_CACHE_TTL:PT24H}
+
+  # Database Configuration
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gogidix}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      idle-timeout: ${DB_IDLE_TIMEOUT:300000}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:20000}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:60000}
+      pool-name: ${spring.application.name}-pool
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: ${JPA_FORMAT_SQL:false}
+        use_sql_comments: ${JPA_USE_SQL_COMMENTS:false}
+        jdbc:
+          batch_size: ${JPA_BATCH_SIZE:20}
+        order_inserts: true
+        order_updates: true
+        connection:
+          provider_disables_autocommit: true
+
+  # Flyway Database Migration
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+    baseline-description: "Initial baseline for ${spring.application.name}"
+
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+          max-idle: ${REDIS_POOL_MAX_IDLE:10}
+          min-idle: ${REDIS_POOL_MIN_IDLE:5}
+          max-wait: ${REDIS_POOL_MAX_WAIT:2000ms}
+
+  # Cache Configuration
+  cache:
+    type: ${SPRING_CACHE_TYPE:caffeine}
+    caffeine:
+      spec: maximumSize=${CACHE_MAXIMUM_SIZE:1000},expireAfterWrite=${CACHE_EXPIRE_AFTER_WRITE:5m},recordStats
+
+  # Actuator Configuration
+  config:
+    import: optional:classpath:security.yml,optional:classpath:messaging.yml,optional:classpath:monitoring.yml
+
+# =====================================================
+# SERVICE DISCOVERY CONFIGURATION
+# =====================================================
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka/}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA:true}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
+    healthcheck:
+      enabled: ${EUREKA_HEALTH_CHECK_ENABLED:true}
+    registry-fetch-interval-seconds: ${EUREKA_REGISTRY_FETCH_INTERVAL:30}
+    eureka-server-connect-timeout-seconds: ${EUREKA_CONNECT_TIMEOUT:5}
+    eureka-server-read-timeout-seconds: ${EUREKA_READ_TIMEOUT:8}
+  instance:
+    hostname: ${HOSTNAME:localhost}
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:true}
+    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL_INTERVAL:30}
+    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION_DURATION:90}
+    metadata-map:
+      zone: ${EUREKA_ZONE:development}
+      version: ${project.version}
+      environment: ${spring.profiles.active}
+      management:
+        context-path: ${server.servlet.context-path:}${management.endpoints.web.base-path:/actuator}
+
+# =====================================================
+# MONITORING AND METRICS CONFIGURATION
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:health,info,metrics,prometheus,configprops,env,loggers,threaddump,heapdump}
+      base-path: ${MANAGEMENT_BASE_PATH:/actuator}
+      cors:
+        allowed-origins: ${MANAGEMENT_CORS_ALLOWED_ORIGINS:*}
+        allowed-methods: ${MANAGEMENT_CORS_ALLOWED_METHODS:GET,POST}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when-authorized}
+      show-components: ${MANAGEMENT_HEALTH_SHOW_COMPONENTS:always}
+      probes:
+        enabled: ${MANAGEMENT_HEALTH_PROBES_ENABLED:true}
+      group:
+        liveness:
+          include: livenessProbe
+        readiness:
+          include: readinessProbe
+    metrics:
+      enabled: ${MANAGEMENT_METRICS_ENABLED:true}
+    prometheus:
+      enabled: ${MANAGEMENT_PROMETHEUS_ENABLED:true}
+  metrics:
+    export:
+      prometheus:
+        enabled: ${PROMETHEUS_ENABLED:true}
+        step: ${PROMETHEUS_STEP:30s}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        spring.data.repository.invocations: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+        spring.data.repository.invocations: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+      region: ${gogidix.platform.region}
+      version: ${project.version}
+  health:
+    circuitbreakers:
+      enabled: ${MANAGEMENT_HEALTH_CIRCUITBREAKERS_ENABLED:true}
+    ratelimiters:
+      enabled: ${MANAGEMENT_HEALTH_RATELIMITERS_ENABLED:true}
+  info:
+    env:
+      enabled: ${MANAGEMENT_INFO_ENV_ENABLED:true}
+    java:
+      enabled: ${MANAGEMENT_INFO_JAVA_ENABLED:true}
+    os:
+      enabled: ${MANAGEMENT_INFO_OS_ENABLED:true}
+
+# =====================================================
+# RESILIENCE4J CONFIGURATION
+# =====================================================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: ${CIRCUIT_BREAKER_FAILURE_RATE_THRESHOLD:50}
+        wait-duration-in-open-state: ${CIRCUIT_BREAKER_WAIT_DURATION:30s}
+        sliding-window-size: ${CIRCUIT_BREAKER_SLIDING_WINDOW_SIZE:10}
+        minimum-number-of-calls: ${CIRCUIT_BREAKER_MIN_CALLS:5}
+        automatic-transition-from-open-to-half-open-enabled: ${CIRCUIT_BREAKER_AUTO_HALF_OPEN:true}
+        permitted-number-of-calls-in-half-open-state: ${CIRCUIT_BREAKER_HALF_OPEN_CALLS:5}
+    instances:
+      database:
+        base-config: default
+      external-api:
+        base-config: default
+        failure-rate-threshold: ${EXTERNAL_API_CIRCUIT_BREAKER_FAILURE_RATE:30}
+        wait-duration-in-open-state: ${EXTERNAL_API_CIRCUIT_BREAKER_WAIT_DURATION:60s}
+
+  ratelimiter:
+    configs:
+      default:
+        limit-for-period: ${RATE_LIMITER_LIMIT:10}
+        limit-refresh-period: ${RATE_LIMITER_REFRESH_PERIOD:1s}
+        timeout-duration: ${RATE_LIMITER_TIMEOUT:3s}
+    instances:
+      api:
+        base-config: default
+        limit-for-period: ${API_RATE_LIMIT:100}
+        limit-refresh-period: ${API_RATE_LIMIT_REFRESH_PERIOD:1s}
+
+  retry:
+    configs:
+      default:
+        max-attempts: ${RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RETRY_WAIT_DURATION:1s}
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+
+# =====================================================
+# OPENAPI DOCUMENTATION CONFIGURATION
+# =====================================================
+springdoc:
+  api-docs:
+    path: ${SPRINGDOC_API_DOCS_PATH:/api-docs}
+    enabled: ${SPRINGDOC_ENABLED:true}
+    resolve-schema-properties: true
+  swagger-ui:
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    operationsSorter: method
+    disable-swagger-default-url: ${SPRINGDOC_DISABLE_DEFAULT_URL:false}
+    try-it-out-enabled: ${SPRINGDOC_TRY_IT_OUT_ENABLED:true}
+    filter: ${SPRINGDOC_FILTER:true}
+  info:
+    title: ${spring.application.name} API
+    description: Enterprise API for Gogidix Property Marketplace Platform
+    version: ${project.version}
+    contact:
+      name: Gogidix Platform Engineering
+      email: platform-engineering@gogidix.com
+    license:
+      name: Gogidix Enterprise License
+      url: https://license.gogidix.com/enterprise
+
+# =====================================================
+# LOGGING CONFIGURATION
+# =====================================================
+logging:
+  level:
+    com.gogidix: ${LOGGING_LEVEL_GOGIDIX:INFO}
+    org.springframework.security: ${LOGGING_LEVEL_SPRING_SECURITY:WARN}
+    org.springframework.web: ${LOGGING_LEVEL_SPRING_WEB:INFO}
+    org.hibernate.SQL: ${LOGGING_LEVEL_HIBERNATE_SQL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${LOGGING_LEVEL_HIBERNATE_BINDER:WARN}
+    org.springframework.cloud: ${LOGGING_LEVEL_SPRING_CLOUD:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-}] [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-}] [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOGGING_FILE_NAME:logs/${spring.application.name}.log}
+    max-size: ${LOGGING_FILE_MAX_SIZE:100MB}
+    max-history: ${LOGGING_FILE_MAX_HISTORY:30}
+    total-size-cap: ${LOGGING_FILE_TOTAL_SIZE_CAP:1GB}
+
+# =====================================================
+# ASYNC CONFIGURATION
+# =====================================================
+spring.task:
+  execution:
+    pool:
+      core-size: ${ASYNC_POOL_CORE_SIZE:8}
+      max-size: ${ASYNC_POOL_MAX_SIZE:32}
+      queue-capacity: ${ASYNC_QUEUE_CAPACITY:100}
+      keep-alive: ${ASYNC_KEEP_ALIVE:60s}
+    thread-name-prefix: ${spring.application.name}-async-
+
+# =====================================================
+# SCHEDULED TASK CONFIGURATION
+# =====================================================
+spring.task.scheduling:
+  pool:
+    size: ${SCHEDULING_POOL_SIZE:4}
+  thread-name-prefix: ${spring.application.name}-scheduled-
+
+# =====================================================
+# JMX CONFIGURATION
+# =====================================================
+spring.jmx:
+  enabled: ${JMX_ENABLED:true}
+  default-domain: ${spring.application.name}

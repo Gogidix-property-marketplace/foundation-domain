@@ -1,0 +1,500 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE MESSAGING CONFIGURATION ✨
+# Mission-Critical Event-Driven Architecture Configuration
+# Architectural Excellence: Google Pub/Sub + Netflix Event Mesh Standards
+
+# =====================================================
+# EVENT BUS CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    messaging:
+      # Event Bus Configuration
+      event-bus:
+        enabled: ${EVENT_BUS_ENABLED:true}
+        async-enabled: ${EVENT_BUS_ASYNC_ENABLED:true}
+        max-event-processors: ${EVENT_BUS_MAX_PROCESSORS:10}
+
+        # Event Persistence (for replay and audit)
+        persistence:
+          enabled: ${EVENT_PERSISTENCE_ENABLED:false}
+          storage: ${EVENT_PERSISTENCE_STORAGE:database} # database, file, eventstore
+
+        # Dead Letter Queue Configuration
+        dead-letter-queue:
+          enabled: ${DLQ_ENABLED:true}
+          topic: ${DLQ_TOPIC:gogidix-events-dlq}
+          max-retries: ${DLQ_MAX_RETRIES:3}
+
+        # Event Filtering and Routing
+        routing:
+          enabled: ${EVENT_ROUTING_ENABLED:true}
+          default-routing-key: ${EVENT_DEFAULT_ROUTING_KEY:gogidix.*}
+
+# =====================================================
+# APACHE KAFKA CONFIGURATION
+# =====================================================
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    client-id: ${spring.application.name}-kafka-client
+
+    # Producer Configuration
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      client-id: ${spring.application.name}-producer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+      # Producer Performance
+      acks: ${KAFKA_PRODUCER_ACKS:all}
+      retries: ${KAFKA_PRODUCER_RETRIES:3}
+      batch-size: ${KAFKA_PRODUCER_BATCH_SIZE:16384}
+      linger-ms: ${KAFKA_PRODUCER_LINGER_MS:5}
+      buffer-memory: ${KAFKA_PRODUCER_BUFFER_MEMORY:33554432}
+      compression-type: ${KAFKA_PRODUCER_COMPRESSION:lz4}
+
+      # Transactional Support
+      transaction-id-prefix: ${KAFKA_TRANSACTION_ID_PREFIX:${spring.application.name}-tx-}
+
+      # Interceptors
+      interceptors:
+        - com.gogidix.platform.common.messaging.interceptor.TracingProducerInterceptor
+        - com.gogidix.platform.common.messaging.interceptor.MetricsProducerInterceptor
+
+    # Consumer Configuration
+    consumer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      client-id: ${spring.application.name}-consumer
+      group-id: ${KAFKA_CONSUMER_GROUP:${spring.application.name}-group}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+      # Consumer Performance
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:earliest}
+      enable-auto-commit: ${KAFKA_AUTO_COMMIT:false}
+      auto-commit-interval: ${KAFKA_AUTO_COMMIT_INTERVAL:1000}
+
+      # Session and Heartbeat
+      session-timeout-ms: ${KAFKA_SESSION_TIMEOUT:30000}
+      heartbeat-interval-ms: ${KAFKA_HEARTBEAT_INTERVAL:10000}
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:100}
+      max-poll-interval-ms: ${KAFKA_MAX_POLL_INTERVAL:300000}
+
+      # Fetch Configuration
+      fetch-min-bytes: ${KAFKA_FETCH_MIN_BYTES:1}
+      fetch-max-wait-ms: ${KAFKA_FETCH_MAX_WAIT:500}
+      fetch-max-bytes: ${KAFKA_FETCH_MAX_BYTES:52428800}
+
+      # Interceptors
+      interceptors:
+        - com.gogidix.platform.common.messaging.interceptor.TracingConsumerInterceptor
+        - com.gogidix.platform.common.messaging.interceptor.MetricsConsumerInterceptor
+
+      # Consumer Rebalance Listener
+      properties:
+        spring.json.trusted.packages: "com.gogidix.platform.messaging.event,com.gogidix.platform.messaging.domain"
+
+    # Streams Configuration (for stream processing)
+    streams:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      application-id: ${spring.application.name}-streams
+      client-id: ${spring.application.name}-streams
+
+      # Default Serde Configuration
+      default:
+        key:
+          serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        value:
+          serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+
+      # Streams Performance
+      num:
+        stream:
+          threads: ${KAFKA_STREAMS_THREADS:2}
+      processing:
+        guarantee: ${KAFKA_PROCESSING_GUARANTEE:exactly_once}
+
+      # State Store Configuration
+      state:
+        dir: ${KAFKA_STATE_DIR:/tmp/kafka-streams/${spring.application.name}}
+      cache:
+        max:
+          bytes:
+            buffering: ${KAFKA_CACHE_MAX_BYTES:10485760}
+
+    # Listener Configuration
+    listener:
+      # Concurrency
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
+
+      # Acknowledgment Mode
+      ack-mode: ${KAFKA_LISTENER_ACK_MODE:MANUAL_IMMEDIATE}
+
+      # Consumer Topics
+      topic:
+        pattern: ${KAFKA_TOPIC_PATTERN:gogidix-.*}
+
+      # Error Handling
+      error-handler: ${KAFKA_ERROR_HANDLER:com.gogidix.platform.common.messaging.error.KafkaErrorHandler}
+
+      # Batch Processing
+      batch-listener: ${KAFKA_BATCH_LISTENER:false}
+
+# =====================================================
+# RABBITMQ CONFIGURATION
+# =====================================================
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+
+    # Connection Configuration
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:15000}
+    publisher-confirms: ${RABBITMQ_PUBLISHER_CONFIRMS:true}
+    publisher-returns: ${RABBITMQ_PUBLISHER_RETURNS:true}
+
+    # Template Configuration
+    template:
+      retry:
+        enabled: ${RABBITMQ_TEMPLATE_RETRY_ENABLED:true}
+        initial-interval: ${RABBITMQ_TEMPLATE_RETRY_INITIAL:1000}
+        max-attempts: ${RABBITMQ_TEMPLATE_RETRY_MAX:3}
+        max-interval: ${RABBITMQ_TEMPLATE_RETRY_MAX:10000}
+        multiplier: ${RABBITMQ_TEMPLATE_RETRY_MULTIPLIER:2}
+
+    # Listener Configuration
+    listener:
+      simple:
+        acknowledge-mode: ${RABBITMQ_ACK_MODE:MANUAL}
+        retry:
+          enabled: ${RABBITMQ_LISTENER_RETRY_ENABLED:true}
+          initial-interval: ${RABBITMQ_LISTENER_RETRY_INITIAL:1000}
+          max-attempts: ${RABBITMQ_LISTENER_RETRY_MAX:3}
+          max-interval: ${RABBITMQ_LISTENER_RETRY_MAX:10000}
+          multiplier: ${RABBITMQ_LISTENER_RETRY_MULTIPLIER:2}
+
+        # Concurrency
+        concurrency: ${RABBITMQ_LISTENER_CONCURRENCY:3}
+        max-concurrency: ${RABBITMQ_LISTENER_MAX_CONCURRENCY:10}
+
+        # Prefetch
+        prefetch: ${RABBITMQ_LISTENER_PREFETCH:1}
+
+        # Default Requeue Rejected
+        default-requeue-rejected: ${RABBITMQ_DEFAULT_REQUEUE:false}
+
+# =====================================================
+# AWS SQS/SNS CONFIGURATION
+# =====================================================
+aws:
+  region: ${AWS_REGION:us-east-1}
+  credentials:
+    access-key: ${AWS_ACCESS_KEY:}
+    secret-key: ${AWS_SECRET_KEY:}
+    instance-profile: ${AWS_INSTANCE_PROFILE:true}
+
+cloud:
+  aws:
+    sqs:
+      endpoint: ${SQS_ENDPOINT:}
+      region: ${AWS_REGION:us-east-1}
+
+    sns:
+      endpoint: ${SNS_ENDPOINT:}
+      region: ${AWS_REGION:us-east-1}
+
+# AWS SQS Queue Configuration
+gogidix:
+  platform:
+    messaging:
+      aws:
+        sqs:
+          enabled: ${AWS_SQS_ENABLED:false}
+          default-queue: ${AWS_SQS_DEFAULT_QUEUE:gogidix-events}
+          dead-letter-queue: ${AWS_SQS_DLQ:gogidix-events-dlq}
+
+          # Queue Configuration
+          max-receive-count: ${AWS_SQS_MAX_RECEIVE_COUNT:3}
+          visibility-timeout: ${AWS_SQS_VISIBILITY_TIMEOUT:30}
+          message-retention-period: ${AWS_SQS_RETENTION_PERIOD:1209600} # 14 days
+
+          # Polling Configuration
+          wait-time-seconds: ${AWS_SQS_WAIT_TIME:20}
+          max-number-of-messages: ${AWS_SQS_MAX_MESSAGES:10}
+
+# =====================================================
+# GOOGLE CLOUD PUB/SUB CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    messaging:
+      gcp:
+        pubsub:
+          enabled: ${GCP_PUBSUB_ENABLED:false}
+          project-id: ${GCP_PROJECT_ID:gogidix-platform}
+
+          # Topic Configuration
+          default-topic: ${GCP_PUBSUB_TOPIC:gogidix-events}
+          dead-letter-topic: ${GCP_PUBSUB_DLQ:gogidix-events-dlq}
+
+          # Subscription Configuration
+          subscription-prefix: ${GCP_PUBSUB_SUBSCRIPTION_PREFIX:gogidix}
+          ack-deadline: ${GCP_PUBSUB_ACK_DEADLINE:60}
+          keep-alive: ${GCP_PUBSUB_KEEP_ALIVE:true}
+
+          # Flow Control
+          max-outstanding-element-count: ${GCP_PUBSUB_MAX_OUTSTANDING:1000}
+          max-outstanding-byte-count: ${GCP_PUBSUB_MAX_BYTES:104857600}
+
+# =====================================================
+# MESSAGE QUEUE SERVICE CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    message-queue:
+      # Backend Selection
+      backend: ${MESSAGE_QUEUE_BACKEND:kafka} # kafka, rabbitmq, sqs, pubsub
+
+      # Message Processing
+      processing:
+        enabled: ${MESSAGE_PROCESSING_ENABLED:true}
+        max-concurrent-processors: ${MESSAGE_MAX_PROCESSORS:10}
+        processor-timeout: ${MESSAGE_PROCESSOR_TIMEOUT:30000}
+
+      # Retry Configuration
+      retry:
+        enabled: ${MESSAGE_RETRY_ENABLED:true}
+        max-attempts: ${MESSAGE_RETRY_MAX_ATTEMPTS:3}
+        initial-delay: ${MESSAGE_RETRY_INITIAL_DELAY:1000}
+        max-delay: ${MESSAGE_RETRY_MAX_DELAY:30000}
+        multiplier: ${MESSAGE_RETRY_MULTIPLIER:2}
+
+      # Dead Letter Queue
+      dead-letter:
+        enabled: ${MESSAGE_DLQ_ENABLED:true}
+        topic: ${MESSAGE_DLQ_TOPIC:dead-letter-queue}
+        ttl: ${MESSAGE_DLQ_TTL:86400000} # 24 hours
+
+      # Message Compression
+      compression:
+        enabled: ${MESSAGE_COMPRESSION_ENABLED:true}
+        threshold: ${MESSAGE_COMPRESSION_THRESHOLD:1024}
+        algorithm: ${MESSAGE_COMPRESSION_ALGORITHM:lz4}
+
+# =====================================================
+# EVENT SOURCING CONFIGURATION
+# =====================================================
+gogidix:
+  platform:
+    event-sourcing:
+      enabled: ${EVENT_SOURCING_ENABLED:false}
+
+      # Event Store Configuration
+      event-store:
+        backend: ${EVENT_STORE_BACKEND:database} # database, file, eventstore, kafka
+
+        # Database Event Store
+        database:
+          schema: ${EVENT_STORE_SCHEMA:event_store}
+          table: ${EVENT_STORE_TABLE:domain_events}
+
+        # File Event Store
+        file:
+          path: ${EVENT_STORE_FILE_PATH:/tmp/event-store}
+          format: ${EVENT_STORE_FILE_FORMAT:json}
+
+      # Snapshot Configuration
+      snapshot:
+        enabled: ${SNAPSHOT_ENABLED:true}
+        threshold: ${SNAPSHOT_THRESHOLD:100}
+        frequency: ${SNAPSHOT_FREQUENCY:1000}
+
+      # Event Serialization
+      serialization:
+        format: ${EVENT_SERIALIZATION_FORMAT:json} # json, avro, protobuf
+        compression: ${EVENT_COMPRESSION_ENABLED:false}
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION
+# =====================================================
+---
+# Development Environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+# Disable external messaging in development
+gogidix:
+  platform:
+    messaging:
+      event-bus:
+        enabled: false
+    message-queue:
+      backend: in-memory
+
+# Use embedded Kafka for development (if available)
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      retries: 1
+      linger-ms: 0
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+
+---
+# Test Environment
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# Disable all external messaging in tests
+gogidix:
+  platform:
+    messaging:
+      event-bus:
+        enabled: false
+    message-queue:
+      backend: in-memory
+
+spring:
+  kafka:
+    producer:
+      retries: 0
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+
+---
+# Staging Environment
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+# Staging Configuration
+gogidix:
+  platform:
+    messaging:
+      event-bus:
+        enabled: true
+        persistence:
+          enabled: true
+      message-queue:
+        backend: kafka
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:staging-kafka:9092}
+    producer:
+      acks: all
+      retries: 3
+    consumer:
+      group-id: ${spring.application.name}-staging-group
+
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:staging-rabbitmq}
+
+---
+# Production Environment
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Production Configuration
+gogidix:
+  platform:
+    messaging:
+      event-bus:
+        enabled: true
+        persistence:
+          enabled: true
+        dead-letter-queue:
+          enabled: true
+      message-queue:
+        backend: kafka
+        retry:
+          max-attempts: 5
+        dead-letter:
+          enabled: true
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:prod-kafka-1:9092,prod-kafka-2:9092,prod-kafka-3:9092}
+    producer:
+      acks: all
+      retries: 5
+      enable-idempotence: true
+      transaction-id-prefix: ${spring.application.name}-prod-tx-
+    consumer:
+      group-id: ${spring.application.name}-prod-group
+      enable-auto-commit: false
+      isolation:
+        level: read_committed
+
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:prod-rabbitmq}
+    publisher-confirms: true
+    publisher-returns: true
+
+# Enable all external services in production
+gogidix:
+  platform:
+    message-queue:
+      aws:
+        sqs:
+          enabled: ${AWS_SQS_ENABLED:false}
+      gcp:
+        pubsub:
+          enabled: ${GCP_PUBSUB_ENABLED:false}
+
+---
+# Kubernetes Environment
+spring:
+  config:
+    activate:
+      on-profile: kubernetes
+
+# Use Kubernetes service discovery for messaging
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka-service:9092}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq-service}
+
+# =====================================================
+# MONITORING AND METRICS
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,kafka,rabbitmq
+  endpoint:
+    kafka:
+      enabled: ${KAFKA_METRICS_ENABLED:true}
+    rabbitmq:
+      enabled: ${RABBITMQ_METRICS_ENABLED:true}
+
+# Custom Metrics
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: ${PROMETHEUS_ENABLED:true}
+    tags:
+      messaging: ${gogidix.platform.message-queue.backend}
+      environment: ${spring.profiles.active}

@@ -1,0 +1,518 @@
+# ✨ GOGIDIX PLATFORM - EXTERNAL SERVICE INTEGRATIONS ✨
+# Mission-Critical Third-Party Service Configuration
+# Architectural Excellence: Google Cloud Services + Netflix Integration Patterns
+
+# =====================================================
+# PAYMENT PROCESSING INTEGRATIONS
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Stripe Payment Processing
+      stripe:
+        enabled: ${STRIPE_ENABLED:false}
+        api-key: ${STRIPE_API_KEY:}
+        secret-key: ${STRIPE_SECRET_KEY:}
+        webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+        environment: ${STRIPE_ENVIRONMENT:production} # test, production
+        api-version: ${STRIPE_API_VERSION:2023-10-16}
+        timeout: ${STRIPE_TIMEOUT:30000}
+        retry:
+          max-attempts: ${STRIPE_RETRY_MAX:3}
+          initial-delay: ${STRIPE_RETRY_DELAY:1000}
+        fees:
+          application-fee-percent: ${STRIPE_APPLICATION_FEE_PERCENT:0.0} # Platform fee as percentage
+          minimum-fee: ${STRIPE_MINIMUM_FEE:0.50} # Minimum fee in currency units
+        supported-methods:
+          - card
+          - sepa_debit
+          - ideal
+          - giropay
+          - bancontact
+          - eps
+          - sofort
+          - p24
+        currency: ${STRIPE_CURRENCY:usd}
+
+      # PayPal Payment Processing
+      paypal:
+        enabled: ${PAYPAL_ENABLED:false}
+        client-id: ${PAYPAL_CLIENT_ID:}
+        client-secret: ${PAYPAL_CLIENT_SECRET:}
+        mode: ${PAYPAL_MODE:sandbox} # sandbox, live
+        api-url: ${PAYPAL_API_URL:https://api-m.sandbox.paypal.com}
+        timeout: ${PAYPAL_TIMEOUT:30000}
+        webhooks:
+          verification-token: ${PAYPAL_WEBHOOK_TOKEN:}
+
+      # Square Payment Processing
+      square:
+        enabled: ${SQUARE_ENABLED:false}
+        application-id: ${SQUARE_APPLICATION_ID:}
+        access-token: ${SQUARE_ACCESS_TOKEN:}
+        environment: ${SQUARE_ENVIRONMENT:sandbox} # sandbox, production
+        location-id: ${SQUARE_LOCATION_ID:}
+        timeout: ${SQUARE_TIMEOUT:30000}
+
+      # Adyen Payment Processing
+      adyen:
+        enabled: ${ADYEN_ENABLED:false}
+        api-key: ${ADYEN_API_KEY:}
+        client-key: ${ADYEN_CLIENT_KEY:}
+        environment: ${ADYEN_ENVIRONMENT:test} # test, live
+        merchant-account: ${ADYEN_MERCHANT_ACCOUNT:}
+        timeout: ${ADYEN_TIMEOUT:30000}
+
+# =====================================================
+# NOTIFICATION SERVICES INTEGRATIONS
+# =====================================================
+spring:
+  # Email Services
+  mail:
+    # SMTP Configuration
+    host: ${SMTP_HOST:smtp.gogidix.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:noreply@gogidix.com}
+    password: ${SMTP_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
+            required: true
+          connection-timeout: ${SMTP_CONNECTION_TIMEOUT:30000}
+          timeout: ${SMTP_TIMEOUT:30000}
+
+    # JavaMailSender Configuration
+    jndi-name: ${MAIL_JNDI_NAME:}
+
+  # SendGrid Email Service
+gogidix:
+  platform:
+    external-services:
+      sendgrid:
+        enabled: ${SENDGRID_ENABLED:false}
+        api-key: ${SENDGRID_API_KEY:}
+        from-email: ${SENDGRID_FROM_EMAIL:noreply@gogidix.com}
+        from-name: ${SENDGRID_FROM_NAME:Gogidix}
+        templates:
+          welcome: ${SENDGRID_TEMPLATE_WELCOME:d-123456789}
+          password-reset: ${SENDGRID_TEMPLATE_PASSWORD_RESET:d-987654321}
+          booking-confirmation: ${SENDGRID_TEMPLATE_BOOKING:d-567890123}
+          payment-confirmation: ${SENDGRID_TEMPLATE_PAYMENT:d-234567890}
+        rate-limit:
+          requests-per-second: ${SENDGRID_RATE_LIMIT:10}
+        retry:
+          max-attempts: ${SENDGRID_RETRY_MAX:3}
+          delay: ${SENDGRID_RETRY_DELAY:1000}
+
+      # Mailgun Email Service
+      mailgun:
+        enabled: ${MAILGUN_ENABLED:false}
+        domain: ${MAILGUN_DOMAIN:mg.gogidix.com}
+        api-key: ${MAILGUN_API_KEY:}
+        from-email: ${MAILGUN_FROM_EMAIL:noreply@gogidix.com}
+        timeout: ${MAILGUN_TIMEOUT:30000}
+        webhook:
+          signing-key: ${MAILGUN_WEBHOOK_KEY:}
+
+      # AWS SES Email Service
+      aws-ses:
+        enabled: ${AWS_SES_ENABLED:false}
+        region: ${AWS_SES_REGION:us-east-1}
+        access-key: ${AWS_SES_ACCESS_KEY:}
+        secret-key: ${AWS_SES_SECRET_KEY:}
+        from-email: ${AWS_SES_FROM_EMAIL:noreply@gogidix.com}
+        configuration-set: ${AWS_SES_CONFIGURATION_SET:}
+
+      # Twilio SMS Service
+      twilio:
+        enabled: ${TWILIO_ENABLED:false}
+        account-sid: ${TWILIO_ACCOUNT_SID:}
+        auth-token: ${TWILIO_AUTH_TOKEN:}
+        from-number: ${TWILIO_FROM_NUMBER:+1234567890}
+        timeout: ${TWILIO_TIMEOUT:30000}
+        rate-limit:
+          requests-per-second: ${TWILIO_RATE_LIMIT:1}
+        retry:
+          max-attempts: ${TWILIO_RETRY_MAX:3}
+          delay: ${TWILIO_RETRY_DELAY:1000}
+
+      # Nexmo SMS Service
+      nexmo:
+        enabled: ${NEXMO_ENABLED:false}
+        api-key: ${NEXMO_API_KEY:}
+        api-secret: ${NEXMO_API_SECRET:}
+        from-number: ${NEXMO_FROM_NUMBER:GOGIDIX}
+        timeout: ${NEXMO_TIMEOUT:30000}
+
+      # Firebase Cloud Messaging (FCM)
+      firebase:
+        enabled: ${FIREBASE_ENABLED:false}
+        service-account-key: ${FIREBASE_SERVICE_ACCOUNT_KEY:}
+        project-id: ${FIREBASE_PROJECT_ID:gogidix-platform}
+        timeout: ${FIREBASE_TIMEOUT:30000}
+        rate-limit:
+          requests-per-minute: ${FIREBASE_RATE_LIMIT:600}
+
+      # Apple Push Notification Service (APNS)
+      apns:
+        enabled: ${APNS_ENABLED:false}
+        certificate-path: ${APNS_CERTIFICATE_PATH:}
+        certificate-password: ${APNS_CERTIFICATE_PASSWORD:}
+        production: ${APNS_PRODUCTION:false}
+        timeout: ${APNS_TIMEOUT:30000}
+
+# =====================================================
+# ANALYTICS AND MONITORING INTEGRATIONS
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Google Analytics
+      google-analytics:
+        enabled: ${GA_ENABLED:false}
+        tracking-id: ${GA_TRACKING_ID:}
+        api-key: ${GA_API_KEY:}
+        measurement-id: ${GA_MEASUREMENT_ID:}
+
+      # Mixpanel Analytics
+      mixpanel:
+        enabled: ${MIXPANEL_ENABLED:false}
+        token: ${MIXPANEL_TOKEN:}
+        api-url: ${MIXPANEL_API_URL:https://api.mixpanel.com}
+        timeout: ${MIXPANEL_TIMEOUT:10000}
+
+      # Segment Analytics
+      segment:
+        enabled: ${SEGMENT_ENABLED:false}
+        write-key: ${SEGMENT_WRITE_KEY:}
+        api-url: ${SEGMENT_API_URL:https://api.segment.io}
+
+      # Amplitude Analytics
+      amplitude:
+        enabled: ${AMPLITUDE_ENABLED:false}
+        api-key: ${AMPLITUDE_API_KEY:}
+        eu-residency: ${AMPLITUDE_EU_RESIDENCY:false}
+
+      # FullStory
+      fullstory:
+        enabled: ${FULLSTORY_ENABLED:false}
+        org-id: ${FULLSTORY_ORG_ID:}
+
+# =====================================================
+# SEARCH AND RECOMMENDATION SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Elasticsearch
+      elasticsearch:
+        enabled: ${ELASTICSEARCH_ENABLED:false}
+        hosts: ${ELASTICSEARCH_HOSTS:localhost:9200}
+        username: ${ELASTICSEARCH_USERNAME:elastic}
+        password: ${ELASTICSEARCH_PASSWORD:}
+        index-prefix: ${ELASTICSEARCH_INDEX_PREFIX:gogidix}
+        timeout: ${ELASTICSEARCH_TIMEOUT:30000}
+        connection-pool-size: ${ELASTICSEARCH_POOL_SIZE:10}
+        retry:
+          max-attempts: ${ELASTICSEARCH_RETRY_MAX:3}
+
+      # Algolia Search
+      algolia:
+        enabled: ${ALGOLIA_ENABLED:false}
+        application-id: ${ALGOLIA_APPLICATION_ID:}
+        admin-api-key: ${ALGOLIA_ADMIN_API_KEY:}
+        search-api-key: ${ALGOLIA_SEARCH_API_KEY:}
+        index-prefix: ${ALGOLIA_INDEX_PREFIX:gogidix}
+        timeout: ${ALGOLIA_TIMEOUT:5000}
+
+      # Elasticsearch OpenSearch
+      opensearch:
+        enabled: ${OPENSEARCH_ENABLED:false}
+        hosts: ${OPENSEARCH_HOSTS:localhost:9200}
+        username: ${OPENSEARCH_USERNAME:admin}
+        password: ${OPENSEARCH_PASSWORD:}
+        index-prefix: ${OPENSEARCH_INDEX_PREFIX:gogidix}
+        timeout: ${OPENSEARCH_TIMEOUT:30000}
+
+# =====================================================
+# GEOCODING AND MAPPING SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Google Maps Geocoding API
+      google-maps:
+        enabled: ${GOOGLE_MAPS_ENABLED:false}
+        api-key: ${GOOGLE_MAPS_API_KEY:}
+        timeout: ${GOOGLE_MAPS_TIMEOUT:10000}
+        rate-limit:
+          requests-per-minute: ${GOOGLE_MAPS_RATE_LIMIT:100}
+
+      # Mapbox Geocoding API
+      mapbox:
+        enabled: ${MAPBOX_ENABLED:false}
+        access-token: ${MAPBOX_ACCESS_TOKEN:}
+        timeout: ${MAPBOX_TIMEOUT:10000}
+        rate-limit:
+          requests-per-minute: ${MAPBOX_RATE_LIMIT:100}
+
+      # OpenStreetMap Nominatim
+      nominatim:
+        enabled: ${NOMINATIM_ENABLED:false}
+        base-url: ${NOMINATIM_BASE_URL:https://nominatim.openstreetmap.org}
+        timeout: ${NOMINATIM_TIMEOUT:15000}
+        rate-limit:
+          requests-per-second: ${NOMINATIM_RATE_LIMIT:1}
+
+      # HERE Maps
+      here:
+        enabled: ${HERE_ENABLED:false}
+        app-id: ${HERE_APP_ID:}
+        app-code: ${HERE_APP_CODE:}
+        timeout: ${HERE_TIMEOUT:10000}
+
+# =====================================================
+# FILE STORAGE AND CDN SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # AWS S3
+      aws-s3:
+        enabled: ${AWS_S3_ENABLED:false}
+        region: ${AWS_S3_REGION:us-east-1}
+        access-key: ${AWS_S3_ACCESS_KEY:}
+        secret-key: ${AWS_S3_SECRET_KEY:}
+        bucket-name: ${AWS_S3_BUCKET:gogidix-platform-assets}
+        bucket-region: ${AWS_S3_BUCKET_REGION:us-east-1}
+        cdn-domain: ${AWS_S3_CDN_DOMAIN:cdn.gogidix.com}
+        timeout: ${AWS_S3_TIMEOUT:30000}
+        multi-part-upload:
+          threshold: ${AWS_S3_MULTIPART_THRESHOLD:10485760} # 10MB
+          part-size: ${AWS_S3_PART_SIZE:5242880} # 5MB
+
+      # Azure Blob Storage
+      azure-storage:
+        enabled: ${AZURE_STORAGE_ENABLED:false}
+        connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+        container-name: ${AZURE_CONTAINER_NAME:gogidix-assets}
+        cdn-domain: ${AZURE_CDN_DOMAIN:cdn.gogidix.com}
+        timeout: ${AZURE_STORAGE_TIMEOUT:30000}
+
+      # Google Cloud Storage
+      gcs:
+        enabled: ${GCS_ENABLED:false}
+        project-id: ${GCS_PROJECT_ID:gogidix-platform}
+        bucket-name: ${GCS_BUCKET:gogidix-platform-assets}
+        credentials-path: ${GCS_CREDENTIALS_PATH:}
+        cdn-domain: ${GCS_CDN_DOMAIN:cdn.gogidix.com}
+        timeout: ${GCS_TIMEOUT:30000}
+
+      # CloudFront CDN
+      cloudfront:
+        enabled: ${CLOUDFRONT_ENABLED:false}
+        distribution-id: ${CLOUDFRONT_DISTRIBUTION_ID:}
+        domain-name: ${CLOUDFRONT_DOMAIN:cdn.gogidix.com}
+        private-key: ${CLOUDFRONT_PRIVATE_KEY:}
+        key-pair-id: ${CLOUDFRONT_KEY_PAIR_ID:}
+
+# =====================================================
+# IDENTITY AND AUTHENTICATION SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Auth0
+      auth0:
+        enabled: ${AUTH0_ENABLED:false}
+        domain: ${AUTH0_DOMAIN:}
+        client-id: ${AUTH0_CLIENT_ID:}
+        client-secret: ${AUTH0_CLIENT_SECRET:}
+        audience: ${AUTH0_AUDIENCE:https://api.gogidix.com}
+        timeout: ${AUTH0_TIMEOUT:30000}
+
+      # Okta
+      okta:
+        enabled: ${OKTA_ENABLED:false}
+        domain: ${OKTA_DOMAIN:}
+        client-id: ${OKTA_CLIENT_ID:}
+        client-secret: ${OKTA_CLIENT_SECRET:}
+        issuer: ${OKTA_ISSUER:}
+        timeout: ${OKTA_TIMEOUT:30000}
+
+      # Firebase Authentication
+      firebase-auth:
+        enabled: ${FIREBASE_AUTH_ENABLED:false}
+        project-id: ${FIREBASE_AUTH_PROJECT_ID:gogidix-platform}
+        service-account-key: ${FIREBASE_AUTH_SERVICE_ACCOUNT_KEY:}
+        timeout: ${FIREBASE_AUTH_TIMEOUT:30000}
+
+# =====================================================
+# CUSTOMER SUPPORT SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Zendesk
+      zendesk:
+        enabled: ${ZENDESK_ENABLED:false}
+        subdomain: ${ZENDESK_SUBDOMAIN:gogidix}
+        username: ${ZENDESK_USERNAME:}
+        token: ${ZENDESK_TOKEN:}
+        timeout: ${ZENDESK_TIMEOUT:30000}
+
+      # Intercom
+      intercom:
+        enabled: ${INTERCOM_ENABLED:false}
+        access-token: ${INTERCOM_ACCESS_TOKEN:}
+        timeout: ${INTERCOM_TIMEOUT:30000}
+
+      # Salesforce Service Cloud
+      salesforce:
+        enabled: ${SALESFORCE_ENABLED:false}
+        username: ${SALESFORCE_USERNAME:}
+        password: ${SALESFORCE_PASSWORD:}
+        security-token: ${SALESFORCE_SECURITY_TOKEN:}
+        sandbox: ${SALESFORCE_SANDBOX:true}
+        timeout: ${SALESFORCE_TIMEOUT:30000}
+
+# =====================================================
+# MACHINE LEARNING AND AI SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # OpenAI GPT
+      openai:
+        enabled: ${OPENAI_ENABLED:false}
+        api-key: ${OPENAI_API_KEY:}
+        organization: ${OPENAI_ORGANIZATION:}
+        model: ${OPENAI_MODEL:gpt-3.5-turbo}
+        max-tokens: ${OPENAI_MAX_TOKENS:2048}
+        temperature: ${OPENAI_TEMPERATURE:0.7}
+        timeout: ${OPENAI_TIMEOUT:60000}
+        rate-limit:
+          requests-per-minute: ${OPENAI_RATE_LIMIT:60}
+
+      # Amazon Comprehend
+      aws-comprehend:
+        enabled: ${AWS_COMPREHEND_ENABLED:false}
+        region: ${AWS_COMPREHEND_REGION:us-east-1}
+        access-key: ${AWS_COMPREHEND_ACCESS_KEY:}
+        secret-key: ${AWS_COMPREHEND_SECRET_KEY:}
+
+      # Google Cloud AI
+      google-ai:
+        enabled: ${GOOGLE_AI_ENABLED:false}
+        api-key: ${GOOGLE_AI_API_KEY:}
+        project-id: ${GOOGLE_AI_PROJECT_ID:gogidix-platform}
+        timeout: ${GOOGLE_AI_TIMEOUT:60000}
+
+# =====================================================
+# RATE LIMITING CONFIGURATION FOR EXTERNAL SERVICES
+# =====================================================
+gogidix:
+  platform:
+    external-services:
+      # Global Rate Limiting
+      rate-limiting:
+        enabled: ${EXTERNAL_RATE_LIMITING_ENABLED:true}
+        default-requests-per-minute: ${EXTERNAL_RATE_LIMIT_RPM:60}
+        default-burst-capacity: ${EXTERNAL_RATE_LIMIT_BURST:120}
+
+        # Service-specific Rate Limits
+        services:
+          stripe:
+            requests-per-minute: ${STRIPE_RATE_LIMIT:100}
+          paypal:
+            requests-per-minute: ${PAYPAL_RATE_LIMIT:50}
+          sendgrid:
+            requests-per-minute: ${SENDGRID_RATE_LIMIT:100}
+          twilio:
+            requests-per-second: ${TWILIO_RATE_LIMIT:1}
+          google-maps:
+            requests-per-minute: ${GOOGLE_MAPS_RATE_LIMIT:100}
+          aws-s3:
+            requests-per-minute: ${AWS_S3_RATE_LIMIT:200}
+
+      # Circuit Breaker Configuration
+      circuit-breaker:
+        failure-threshold: ${EXTERNAL_CIRCUIT_BREAKER_FAILURE:5}
+        timeout-seconds: ${EXTERNAL_CIRCUIT_BREAKER_TIMEOUT:30}
+        half-open-max-calls: ${EXTERNAL_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION
+# =====================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+# Disable external services in development
+gogidix:
+  platform:
+    external-services:
+      stripe:
+        enabled: false
+      paypal:
+        enabled: false
+      sendgrid:
+        enabled: false
+      twilio:
+        enabled: false
+      firebase:
+        enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# Use mock services in tests
+gogidix:
+  platform:
+    external-services:
+      mock:
+        enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+# Use test endpoints for staging
+gogidix:
+  platform:
+    external-services:
+      stripe:
+        environment: test
+        api-key: ${STRIPE_TEST_API_KEY:}
+      paypal:
+        mode: sandbox
+      sendgrid:
+        templates:
+          welcome: test-welcome-template
+          password-reset: test-password-reset-template
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+# Production configuration uses all real services
+gogidix:
+  platform:
+    external-services:
+      rate-limiting:
+        enabled: true
+      circuit-breaker:
+        enabled: true

@@ -1,0 +1,379 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE DATABASE CONFIGURATION ✨
+# Mission-Critical Database Configuration Templates
+# Architectural Excellence: Google Cloud SQL + Netflix AtlasDB Patterns
+
+# =====================================================
+# PRIMARY DATABASE CONFIGURATION
+# =====================================================
+spring:
+  datasource:
+    # Primary Database Connection
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/${DATABASE_NAME:gogidix}}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
+    # HikariCP Connection Pool Configuration
+    hikari:
+      # Connection Pool Size
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      idle-timeout: ${DB_IDLE_TIMEOUT:300000}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:20000}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+
+      # Leak Detection
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:60000}
+
+      # Pool Name for Monitoring
+      pool-name: ${spring.application.name}-pool
+
+      # Performance Optimization
+      data-source-properties:
+        cachePrepStmts: ${DB_CACHE_PREP_STMTS:true}
+        prepStmtCacheSize: ${DB_PREP_STMT_CACHE_SIZE:250}
+        prepStmtCacheSqlLimit: ${DB_PREP_STMT_CACHE_SQL_LIMIT:2048}
+        useServerPrepStmts: ${DB_USE_SERVER_PREP_STMTS:true}
+        useLocalSessionState: ${DB_USE_LOCAL_SESSION_STATE:true}
+        rewriteBatchedStatements: ${DB_REWRITE_BATCHED_STATEMENTS:true}
+        cacheResultSetMetadata: ${DB_CACHE_RESULT_SET_METADATA:true}
+        cacheServerConfiguration: ${DB_CACHE_SERVER_CONFIG:true}
+        elideSetAutoCommits: ${DB_ELIDE_SET_AUTO_COMMITS:true}
+        maintainTimeStats: ${DB_MAINTAIN_TIME_STATS:false}
+        netTimeoutForStreamingResults: ${DB_NET_TIMEOUT_STREAMING:0}
+
+  # JPA/Hibernate Configuration
+  jpa:
+    open-in-view: ${JPA_OPEN_IN_VIEW:false}
+    show-sql: ${JPA_SHOW_SQL:false}
+    database-platform: ${JPA_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
+    generate-ddl: ${JPA_GENERATE_DDL:false}
+
+    # Hibernate Configuration
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+      use-new-id-generator-mappings: ${JPA_USE_NEW_ID_GENERATOR:true}
+
+      # Query Optimization
+      jdbc:
+        batch_size: ${JPA_BATCH_SIZE:20}
+        order_inserts: ${JPA_ORDER_INSERTS:true}
+        order_updates: ${JPA_ORDER_UPDATES:true}
+        batch_versioned_data: ${JPA_BATCH_VERSIONED_DATA:true}
+
+      # Connection Configuration
+      connection:
+        provider_disables_autocommit: ${JPA_DISABLE_AUTOCOMMIT:true}
+
+      # Statistics and Monitoring
+      generate_statistics: ${JPA_GENERATE_STATS:false}
+        session:
+          events:
+            log:
+              statement:
+                format_sql: ${JPA_FORMAT_SQL:false}
+
+      # Cache Configuration
+      cache:
+        use_second_level_cache: ${JPA_SECOND_LEVEL_CACHE:false}
+        use_query_cache: ${JPA_QUERY_CACHE:false}
+        region:
+          factory_class: ${JPA_CACHE_FACTORY:org.hibernate.cache.jcache.JCacheRegionFactory}
+
+      # Multi-tenancy Configuration
+      multiTenancy: ${JPA_MULTI_TENANT:NONE}
+      # Options: NONE, DATABASE, SCHEMA, DISCRIMINATOR
+
+  # Database Migration with Flyway
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:1}
+    baseline-description: ${FLYWAY_BASELINE_DESCRIPTION:Initial baseline}
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+    clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+
+    # Migration Locations
+    locations:
+      - classpath:db/migration
+      - classpath:db/migration/${spring.application.name}
+      - classpath:db/migration/common
+
+    # SQL Migration Configuration
+    sql-migration-separator: ${FLYWAY_SQL_SEPARATOR:__}
+    sql-migration-prefix: ${FLYWAY_SQL_PREFIX:V}
+    sql-migration-suffixes: ${FLYWAY_SQL_SUFFIXES:.sql}
+    repeatable-sql-migration-prefix: ${FLYWAY_REPEATABLE_PREFIX:R}
+
+    # Performance Configuration
+    batch: ${FLYWAY_BATCH:true}
+    out-of-order: ${FLYWAY_OUT_OF_ORDER:false}
+
+    # Encoding
+    encoding: ${FLYWAY_ENCODING:UTF-8}
+
+# =====================================================
+# READ REPLICA CONFIGURATION (FOR READ-HEAVY WORKLOADS)
+# =====================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: read-replica
+
+  # Primary Database (Write Operations)
+  datasource:
+    url: ${PRIMARY_DATABASE_URL:jdbc:postgresql://primary-db:5432/${DATABASE_NAME:gogidix}}
+    username: ${PRIMARY_DATABASE_USERNAME:postgres}
+    password: ${PRIMARY_DATABASE_PASSWORD:password}
+    hikari:
+      maximum-pool-size: ${PRIMARY_DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${PRIMARY_DB_MIN_IDLE:2}
+
+  # Read Replica Database (Read Operations)
+  read-replica:
+    datasource:
+      url: ${REPLICA_DATABASE_URL:jdbc:postgresql://replica-db:5432/${DATABASE_NAME:gogidix}}
+      username: ${REPLICA_DATABASE_USERNAME:postgres}
+      password: ${REPLICA_DATABASE_PASSWORD:password}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        maximum-pool-size: ${REPLICA_DB_MAX_POOL_SIZE:20}
+        minimum-idle: ${REPLICA_DB_MIN_IDLE:5}
+
+# =====================================================
+# MULTI-TENANT DATABASE CONFIGURATION
+# =====================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: multi-tenant
+
+  # Multi-tenant Strategy Configuration
+  gogidix:
+    platform:
+      multitenancy:
+        enabled: ${MULTI_TENANT_ENABLED:true}
+        strategy: ${MULTI_TENANT_STRATEGY:SCHEMA} # DATABASE, SCHEMA, DISCRIMINATOR
+
+        # Schema Strategy Configuration
+        schema-strategy:
+          default-schema: ${MULTI_TENANT_DEFAULT_SCHEMA:public}
+          tenant-schema-prefix: ${MULTI_TENANT_SCHEMA_PREFIX:tenant_}
+
+        # Database Strategy Configuration
+        database-strategy:
+          connection-provider: ${MULTI_TENANT_DB_PROVIDER:hikari}
+          master-database: ${MULTI_TENANT_MASTER_DB_URL:jdbc:postgresql://master-db:5432/tenant_master}
+          master-username: ${MULTI_TENANT_MASTER_DB_USERNAME:postgres}
+          master-password: ${MULTI_TENANT_MASTER_DB_PASSWORD:password}
+
+        # Tenant Resolution
+        tenant-resolver:
+          type: ${TENANT_RESOLVER_TYPE:HEADER} # HEADER, SUBDOMAIN, JWT, DATABASE
+          header-name: ${TENANT_HEADER_NAME:X-Tenant-ID}
+          subdomain-separator: ${TENANT_SUBDOMAIN_SEPARATOR:.}
+
+# =====================================================
+# DATABASE HEALTH CHECK CONFIGURATION
+# =====================================================
+management:
+  health:
+    db:
+      enabled: ${DB_HEALTH_CHECK_ENABLED:true}
+    datasource:
+      enabled: ${DATASOURCE_HEALTH_CHECK_ENABLED:true}
+
+# Custom Health Check Indicators
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+
+# =====================================================
+# ENVIRONMENT-SPECIFIC OVERRIDES
+# =====================================================
+---
+# Development Environment
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  # In-memory H2 Database for Development
+  datasource:
+    url: jdbc:h2:mem:gogidix;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+  # Disable Flyway in development
+  flyway:
+    enabled: false
+
+  # H2 Console
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+---
+# Test Environment
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  # Test Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+      connection-timeout: 1000
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+---
+# Staging Environment
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+  datasource:
+    url: ${STAGING_DB_URL:jdbc:postgresql://staging-db:5432/gogidix_staging}
+    username: ${STAGING_DB_USERNAME:gogidix_staging}
+    password: ${STAGING_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 3
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    locations:
+      - classpath:db/migration
+      - classpath:db/migration/staging
+
+---
+# Production Environment
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${PROD_DB_URL:jdbc:postgresql://prod-db:5432/gogidix_prod}
+    username: ${PROD_DB_USERNAME:gogidix_prod}
+    password: ${PROD_DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 10000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 30000
+
+    # Production SSL Configuration
+    data-source-properties:
+      ssl: ${DB_SSL_ENABLED:true}
+      sslmode: ${DB_SSL_MODE:require}
+      sslfactory: ${DB_SSL_FACTORY:org.postgresql.ssl.DefaultJavaSSLFactory}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        generate_statistics: true
+
+  flyway:
+    locations:
+      - classpath:db/migration
+      - classpath:db/migration/prod
+    clean-disabled: true
+    validate-on-migrate: true
+
+---
+# Kubernetes Environment
+spring:
+  config:
+    activate:
+      on-profile: kubernetes
+
+  # Use Kubernetes ConfigMaps and Secrets
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
+  # Kubernetes-specific Hikari Configuration
+  datasource:
+    hikari:
+      maximum-pool-size: ${K8S_DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${K8S_DB_MIN_IDLE:5}
+
+# =====================================================
+# DATABASE PERFORMANCE MONITORING
+# =====================================================
+# Enable JPA Statistics for Production Monitoring (when needed)
+---
+spring:
+  config:
+    activate:
+      on-profile: performance-monitoring
+
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: true
+        session:
+          events:
+            log:
+              statement:
+                format_sql: false
+
+# Custom Metrics Configuration
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      database: ${spring.application.name}
+      environment: ${spring.profiles.active}
