@@ -1,0 +1,221 @@
+server:
+  port: 8888
+  servlet:
+    context-path: /config
+
+spring:
+  application:
+    name: gogidix-config-server
+  profiles:
+    active: dev
+
+  # Spring Cloud Config Server Configuration
+  cloud:
+    config:
+      server:
+        # Git Repository Configuration
+        git:
+          uri: ${CONFIG_GIT_URI:file://${user.home}/gogidix-config-repo}
+          search-paths: '{application}'
+          clone-on-start: true
+          force-pull: true
+          default-label: main
+          timeout: 10
+          refresh-rate: 60
+          delete-untracked-branches: true
+
+        # Encrypt Configuration
+        encrypt:
+          enabled: true
+          key: ${CONFIG_ENCRYPT_KEY:gogidix-default-encrypt-key-change-in-production}
+
+        # Health Indicators
+        health:
+          repositories:
+            enabled: true
+
+        # Monitoring
+        monitor:
+          enabled: true
+
+        # Environment Configuration
+        accept-empty: true
+        default-label: main
+
+        # Management Domain Service Configurations
+        management-services:
+          authentication-service:
+            name: authentication-service
+            profile: dev,prod,docker
+            label: main
+          user-management-service:
+            name: user-management-service
+            profile: dev,prod,docker
+            label: main
+          property-management-service:
+            name: property-management-service
+            profile: dev,prod,docker
+            label: main
+          booking-service:
+            name: booking-service
+            profile: dev,prod,docker
+            label: main
+          billing-invoicing-service:
+            name: billing-invoicing-service
+            profile: dev,prod,docker
+            label: main
+          notification-service:
+            name: notification-service
+            profile: dev,prod,docker
+            label: main
+          reporting-analytics-service:
+            name: reporting-analytics-service
+            profile: dev,prod,docker
+            label: main
+
+  # Database for Configuration Metadata
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gogidix_config
+    username: ${DB_USERNAME:config_user}
+    password: ${DB_PASSWORD:config_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+
+  # Redis for Configuration Caching
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # RabbitMQ for Configuration Updates
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+  # Kafka for Configuration Broadcasting
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+      group-id: config-server
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  tracing:
+    sampling:
+      probability: 1.0
+
+logging:
+  level:
+    com.gogidix: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.cloud: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId},%X{spanId}] [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId},%X{spanId}] [%thread] %-5level %logger{36} - %msg%n"
+
+# Infrastructure Service Configuration
+infrastructure:
+  service:
+    name: config-server
+    version: 1.0.0
+    enabled: true
+    environment: ${ENVIRONMENT:development}
+  circuit-breaker:
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 30s
+    sliding-window-size: 10
+  cache:
+    ttl: 3600
+    max-size: 1000
+  monitoring:
+    enabled: true
+    metrics-interval: 60000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    com.gogidix: DEBUG
+    org.springframework: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  datasource:
+    url: ${PROD_DB_URL}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+
+logging:
+  level:
+    com.gogidix: INFO
+    org.springframework: WARN
+  file:
+    name: logs/config-server.log
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  redis:
+    host: redis
+    port: 6379
+  rabbitmq:
+    host: rabbitmq
+    port: 5672

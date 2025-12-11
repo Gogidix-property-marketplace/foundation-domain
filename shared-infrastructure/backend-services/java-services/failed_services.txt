@@ -1,0 +1,7 @@
+circuit-breaker-service:FAILED_COMPILE
+ai-integration-service:FAILED_COMPILE
+config-server:FAILED_COMPILE
+aggregation-service:FAILED_TEST
+backup-service:FAILED_TEST
+cache-service:FAILED_TEST
+correlation-id-service:FAILED_TEST

@@ -1,0 +1,305 @@
+server:
+  port: 8030
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: always
+    include-binding-errors: always
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    connection-timeout: 20000ms
+
+spring:
+  application:
+    name: rate-limiting-service
+  profiles:
+    active: dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gogidix_infrastructure
+    username: ${DB_USERNAME:admin}
+    password: ${DB_PASSWORD:admin123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  h2:
+    console:
+      enabled: true
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+        max-wait: 3000ms
+      shutdown-timeout: 100ms
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  security:
+    user:
+      name: ${SECURITY_USER:admin}
+      password: ${SECURITY_PASSWORD:admin123}
+      roles: ADMIN
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000
+      cache-null-values: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,threaddump,heapdump
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      group:
+        liveness:
+          include: "livenessState,diskSpace"
+        readiness:
+          include: "readinessState,redis"
+    metrics:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: rate-limiting-service
+      environment: ${ENVIRONMENT:development}
+
+logging:
+  level:
+    com.gogidix: INFO
+    org.springframework.security: WARN
+    org.springframework.cache: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId},%X{spanId}] [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%X{traceId},%X{spanId}] [%thread] %-5level %logger{36} - %msg%n"
+
+# Rate Limiting Service Configuration
+rate-limiting:
+  service:
+    name: rate-limiting-service
+    version: 1.0.0
+    enabled: true
+    environment: ${ENVIRONMENT:development}
+  algorithms:
+    token-bucket:
+      default-capacity: 10000
+      default-refill-rate: 1000
+      precision-milliseconds: true
+    sliding-window:
+      default-window-size: 60
+      default-max-requests: 10000
+      cleanup-interval: 300
+    fixed-window:
+      default-window-size: 60
+      default-max-requests: 10000
+      async-cleanup: true
+    leaky-bucket:
+      default-rate: 1000
+      default-bucket-size: 10000
+      processing-delay: false
+  redis:
+    key-prefix: "gogidix:ratelimit"
+    default-ttl: 3600
+    script-cache-size: 100
+    cluster-enabled: false
+  performance:
+    async-logging: true
+    batch-size: 100
+    cache-policy-results: true
+    cache-size: 10000
+  metrics:
+    enabled: true
+    export-interval: 30s
+    include-algorithm-metrics: true
+  monitoring:
+    enabled: true
+    metrics-interval: 30000
+    alert-threshold:
+      error-rate: 0.01
+      latency-p95: 10
+      latency-p99: 50
+  security:
+    enable-authorization: true
+    default-roles: USER
+    admin-roles: ADMIN
+
+# Infrastructure Service Configuration
+infrastructure:
+  service:
+    name: rate-limiting-service
+    version: 1.0.0
+    enabled: true
+    environment: ${ENVIRONMENT:development}
+  circuit-breaker:
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 30s
+    sliding-window-size: 10
+  cache:
+    ttl: 3600
+    max-size: 1000
+  monitoring:
+    enabled: true
+    metrics-interval: 60000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  redis:
+    host: localhost
+    port: 6379
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 4
+  security:
+    user:
+      name: admin
+      password: admin123
+      roles: ADMIN
+
+logging:
+  level:
+    com.gogidix: DEBUG
+    org.springframework: DEBUG
+    org.springframework.web: DEBUG
+    io.lettuce.core: DEBUG
+
+rate-limiting:
+  algorithms:
+    token-bucket:
+      default-capacity: 1000
+      default-refill-rate: 100
+    sliding-window:
+      default-window-size: 60
+      default-max-requests: 1000
+  monitoring:
+    enabled: true
+    debug: true
+  security:
+    enable-authorization: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  datasource:
+    url: ${PROD_DB_URL}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+  redis:
+    host: ${PROD_REDIS_HOST}
+    port: ${PROD_REDIS_PORT:6379}
+    password: ${PROD_REDIS_PASSWORD}
+    lettuce:
+      pool:
+        max-active: 32
+        max-idle: 16
+        min-idle: 4
+  security:
+    user:
+      name: ${SECURITY_USER}
+      password: ${SECURITY_PASSWORD}
+      roles: ADMIN
+
+logging:
+  level:
+    com.gogidix: INFO
+    org.springframework: WARN
+    io.lettuce.core: WARN
+  file:
+    name: logs/rate-limiting-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 1GB
+
+rate-limiting:
+  algorithms:
+    token-bucket:
+      default-capacity: 100000
+      default-refill-rate: 10000
+    sliding-window:
+      default-window-size: 60
+      default-max-requests: 100000
+  monitoring:
+    enabled: true
+    debug: false
+  security:
+    enable-authorization: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  redis:
+    host: redis
+    port: 6379
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+  datasource:
+    url: jdbc:postgresql://postgres:5432/gogidix_infrastructure
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  security:
+    user:
+      name: ${SECURITY_USER}
+      password: ${SECURITY_PASSWORD}

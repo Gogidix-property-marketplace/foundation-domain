@@ -1,0 +1,199 @@
+# Default values for EnterpriseTestService-EnterpriseTestService chart
+
+replicaCount: 3
+
+image:
+  repository: EnterpriseTestService-EnterpriseTestService
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+podSecurityContext:
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+    - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: EnterpriseTestService-EnterpriseTestService.example.com
+      paths:
+        - path: /api(/|$)(.*)
+          pathType: Prefix
+  tls:
+    - secretName: EnterpriseTestService-EnterpriseTestService-tls
+      hosts:
+        - EnterpriseTestService-EnterpriseTestService.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - EnterpriseTestService-EnterpriseTestService
+        topologyKey: kubernetes.io/hostname
+
+# Application configuration
+app:
+  name: EnterpriseTestService-EnterpriseTestService
+  version: 1.0.0
+  environment: production
+  javaOpts: "-Xms512m -Xmx1024m -XX:+UseG1GC"
+
+# Database configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "changeme"
+    username: "postgres"
+    password: "changeme"
+    database: "EnterpriseTestService_EnterpriseTestService"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+  service:
+    port: 5432
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: false
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  service:
+    port: 6379
+
+# Kafka configuration
+kafka:
+  enabled: true
+  listeners:
+    client:
+      containerPort: 9092
+      protocol: PLAINTEXT
+      name: CLIENT
+  controller:
+    replicaCount: 3
+  zookeeper:
+    enabled: true
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /actuator/prometheus
+    port: 8080
+
+# Secrets
+secrets:
+  dbHost: "postgresql"
+  dbPort: "5432"
+  dbUsername: "postgres"
+  dbPassword: "changeme"
+  jwtSecret: "EnterpriseTestService-default-secret-key-change-in-production"
+  redisPassword: ""
+
+# Health checks
+healthChecks:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  startup:
+    path: /actuator/health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Volume mounts
+volumes:
+  logs:
+    enabled: true
+    size: 5Gi
+    mountPath: /app/logs
+  tmp:
+    enabled: true
+    mountPath: /tmp
+
+# Additional labels
+commonLabels:
+  app.kubernetes.io/name: EnterpriseTestService-EnterpriseTestService
+  app.kubernetes.io/instance: EnterpriseTestService-EnterpriseTestService
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: backend
+  app.kubernetes.io/part-of: EnterpriseTestService

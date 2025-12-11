@@ -1,0 +1,572 @@
+server:
+  port: 8000
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: gogidix-api-gateway
+  profiles:
+    active: dev
+
+  # Spring Cloud Gateway Configuration
+  cloud:
+    gateway:
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+              - "http://localhost:8080"
+              - "https://gogidix.com"
+              - "https://*.gogidix.com"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      # Management Domain Service Routes
+      routes:
+        # Authentication Service Routes
+        - id: authentication-service
+          uri: lb://authentication-service
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/login/**,/api/v1/logout/**,/api/v1/token/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: authentication-service
+                fallbackUri: forward:/fallback/auth
+
+        # User Management Service Routes
+        - id: user-management-service
+          uri: lb://user-management-service
+          predicates:
+            - Path=/api/v1/users/**,/api/v1/profiles/**,/api/v1/roles/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: user-management-service
+                fallbackUri: forward:/fallback/users
+
+        # Property Management Service Routes
+        - id: property-management-service
+          uri: lb://property-management-service
+          predicates:
+            - Path=/api/v1/properties/**,/api/v1/listings/**,/api/v1/amenities/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: property-management-service
+                fallbackUri: forward:/fallback/properties
+
+        # Booking Service Routes
+        - id: booking-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/v1/bookings/**,/api/v1/reservations/**,/api/v1/availability/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: booking-service
+                fallbackUri: forward:/fallback/bookings
+
+        # Billing Invoicing Service Routes
+        - id: billing-invoicing-service
+          uri: lb://billing-invoicing-service
+          predicates:
+            - Path=/api/v1/billing/**,/api/v1/invoices/**,/api/v1/payments/**,/api/v1/transactions/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: billing-invoicing-service
+                fallbackUri: forward:/fallback/billing
+
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**,/api/v1/emails/**,/api/v1/sms/**,/api/v1/push/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: notification-service
+                fallbackUri: forward:/fallback/notifications
+
+        # Reporting Analytics Service Routes
+        - id: reporting-analytics-service
+          uri: lb://reporting-analytics-service
+          predicates:
+            - Path=/api/v1/reports/**,/api/v1/analytics/**,/api/v1/dashboards/**,/api/v1/metrics/**
+          filters:
+            - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: reporting-analytics-service
+                fallbackUri: forward:/fallback/reports
+
+        # Foundation Services Routes
+        - id: config-server
+          uri: lb://config-server
+          predicates:
+            - Path=/api/v1/config/**,/api/v1/properties/**
+          filters:
+            - StripPrefix=2
+
+        - id: eureka-server
+          uri: http://localhost:8761
+          predicates:
+            - Path=/api/v1/eureka/**,/api/v1/registry/**
+          filters:
+            - StripPrefix=2
+
+      # Default Filters for All Routes
+      default-filters:
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
+            methods: GET,POST
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+        - name: AddResponseHeader
+          args:
+            name: X-Response-Time
+            value: "#{T(System).currentTimeMillis()}"
+        - name: AddRequestHeader
+          args:
+            name: X-Request-Id
+            value: "#{T(java.util.UUID).randomUUID().toString()}"
+
+  # Redis Configuration for Rate Limiting
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # Circuit Breaker Configuration
+  resilience4j:
+    circuitbreaker:
+      instances:
+        authentication-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        user-management-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        property-management-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        booking-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        billing-invoicing-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        notification-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+        reporting-analytics-service:
+          failure-rate-threshold: 50
+          wait-duration-in-open-state: 30s
+          sliding-window-type: COUNT_BASED
+          sliding-window-size: 10
+          minimum-number-of-calls: 5
+
+# Eureka Client Configuration
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+    health-check-url-path: /actuator/health
+    status-page-url-path: /actuator/info
+    metadata-map:
+      zone: primary
+      version: 1.0.0
+      environment: development
+      service-type: gateway
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    registry-fetch-interval-seconds: 30
+    healthcheck:
+      enabled: true
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,loggers,configprops,env,mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    gateway:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 30s
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        spring.cloud.gateway.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+        spring.cloud.gateway.requests: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: gogidix-api-gateway
+      service: api-gateway
+      layer: infrastructure
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.infrastructure.gateway: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.cloud: DEBUG
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-},%X{requestId:-}] [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-},%X{requestId:-}] [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/api-gateway.log
+    max-size: 100MB
+    max-history: 30
+
+# Infrastructure Service Configuration
+infrastructure:
+  service:
+    name: gogidix-api-gateway
+    version: 1.0.0
+    enabled: true
+    environment: ${ENVIRONMENT:development}
+    type: spring-cloud-gateway
+  circuit-breaker:
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 30s
+    sliding-window-size: 10
+  cache:
+    ttl: 3600
+    max-size: 1000
+  monitoring:
+    enabled: true
+    metrics-interval: 60000
+  security:
+    jwt:
+      enabled: true
+      secret-key: ${JWT_SECRET:gogidix-default-secret-key-change-in-production}
+      expiration-seconds: 3600
+    cors:
+      enabled: true
+      allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080}
+    rate-limiting:
+      enabled: true
+      default-limit: 100
+      window-seconds: 60
+
+---
+# Development Profile Configuration
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  cloud:
+    gateway:
+      routes:
+        # Allow direct access to local services in development
+        - id: auth-service-dev
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/v1/dev/auth/**
+          filters:
+            - StripPrefix=2
+
+        - id: user-service-dev
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/dev/users/**
+          filters:
+            - StripPrefix=2
+
+        - id: property-service-dev
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/dev/properties/**
+          filters:
+            - StripPrefix=2
+
+        - id: booking-service-dev
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/v1/dev/bookings/**
+          filters:
+            - StripPrefix=2
+
+        - id: billing-service-dev
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/v1/dev/billing/**
+          filters:
+            - StripPrefix=2
+
+        - id: notification-service-dev
+          uri: http://localhost:8087
+          predicates:
+            - Path=/api/v1/dev/notifications/**
+          filters:
+            - StripPrefix=2
+
+        - id: reporting-service-dev
+          uri: http://localhost:8088
+          predicates:
+            - Path=/api/v1/dev/reports/**
+          filters:
+            - StripPrefix=2
+
+logging:
+  level:
+    com.gogidix.infrastructure.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG
+
+---
+# Production Profile Configuration
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  cloud:
+    gateway:
+      # In production, only allow service discovery routes
+      default-filters:
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
+            methods: GET,POST
+        - name: AddResponseHeader
+          args:
+            name: X-Response-Time
+            value: "#{T(System).currentTimeMillis()}"
+        - name: AddRequestHeader
+          args:
+            name: X-Request-Id
+            value: "#{T(java.util.UUID).randomUUID().toString()}"
+        - name: SecurityHeadersFilter
+
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+
+eureka:
+  instance:
+    hostname: ${HOSTNAME:localhost}
+    prefer-ip-address: false
+    metadata-map:
+      zone: ${EUREKA_ZONE:production}
+      version: 1.0.0
+      environment: production
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVERS:http://eureka-server:8761/eureka/}
+
+logging:
+  level:
+    com.gogidix.infrastructure.gateway: INFO
+    org.springframework.cloud.gateway: WARN
+    org.springframework.web.reactive: WARN
+  file:
+    name: /var/log/gogidix/api-gateway.log
+
+---
+# Docker Profile Configuration
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  redis:
+    host: redis
+    port: 6379
+
+eureka:
+  instance:
+    hostname: ${HOSTNAME:api-gateway}
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+infrastructure:
+  service:
+    environment: docker
+
+# Infrastructure Service Configuration
+infrastructure:
+  service:
+    name: api-gateway
+    version: 1.0.0
+    enabled: true
+    environment: ${ENVIRONMENT:development}
+  circuit-breaker:
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 30s
+    sliding-window-size: 10
+  cache:
+    ttl: 3600
+    max-size: 1000
+  monitoring:
+    enabled: true
+    metrics-interval: 60000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+logging:
+  level:
+    com.gogidix: DEBUG
+    org.springframework: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  datasource:
+    url: ${PROD_DB_URL}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
+
+logging:
+  level:
+    com.gogidix: INFO
+    org.springframework: WARN
+  file:
+    name: logs/api-gateway.log
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  redis:
+    host: redis
+    port: 6379
+  rabbitmq:
+    host: rabbitmq
+    port: 5672

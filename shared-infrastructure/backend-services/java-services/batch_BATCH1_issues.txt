@@ -1,0 +1,10 @@
+aggregation-service: Fixed test compilation issues
+aggregation-service: COMPILATION_FAILED
+authorization-service: Fixed test compilation issues
+authorization-service: COMPILATION_FAILED
+authentication-service: Fixed test compilation issues
+authentication-service: COMPILATION_FAILED
+backup-service: Fixed test compilation issues
+backup-service: COMPILATION_FAILED
+api-gateway: Fixed test compilation issues
+api-gateway: COMPILATION_FAILED

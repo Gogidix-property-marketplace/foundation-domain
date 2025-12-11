@@ -1,0 +1,109 @@
+# API Gateway Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /gateway
+
+spring:
+  application:
+    name: api-gateway
+
+  # Security
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/gogidix-property
+
+  # Circuit Breaker
+  cloud:
+    circuitbreaker:
+      resilience4j:
+        configurations:
+          default:
+            failureRateThreshold: 50
+            waitDurationInOpenState: 30s
+            slidingWindowType: COUNT_BASED
+            slidingWindowSize: 10
+            minimumNumberOfCalls: 5
+            automaticTransitionFromOpenToHalfOpenEnabled: true
+
+  # Rate Limiting
+  redis:
+    host: redis
+    port: 6379
+    password: gogidix123
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,refresh,bus-refresh
+  endpoint:
+    health:
+      show-details: always
+    refresh:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 0.1
+
+# Gateway Configuration
+gateway:
+  rate-limiting:
+    enabled: true
+    default-limits:
+      requests: 100
+      window: 60s
+    policies:
+      - name: strict
+        requests: 10
+        window: 60s
+      - name: moderate
+        requests: 50
+        window: 60s
+      - name: lenient
+        requests: 200
+        window: 60s
+
+  circuit-breaking:
+    enabled: true
+    default-threshold: 5
+    timeout: 30s
+
+  routing:
+    rules:
+      - path: /api/v1/properties/**
+        service: property-service
+        circuit-breaker: enabled
+      - path: /api/v1/users/**
+        service: user-service
+        circuit-breaker: enabled
+      - path: /api/v1/payments/**
+        service: payment-service
+        circuit-breaker: enabled
+
+# WAF Configuration
+waf:
+  enabled: true
+  rules:
+    - type: SQL_INJECTION
+      enabled: true
+    - type: XSS
+      enabled: true
+    - type: CSRF
+      enabled: true
+    - type: RATE_LIMIT
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.gogidix.gateway: DEBUG

@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: EnterpriseTestService-EnterpriseTestService-config
+  namespace: EnterpriseTestService
+  labels:
+    app: EnterpriseTestService-EnterpriseTestService
+    component: backend
+data:
+  application.yml: |
+    spring:
+      application:
+        name: EnterpriseTestService-EnterpriseTestService
+      profiles:
+        active: prod
+      cloud:
+        kubernetes:
+          discovery:
+            enabled: true
+            all-namespaces: true
+          config:
+            enabled: true
+            sources:
+              - name: EnterpriseTestService-EnterpriseTestService-config
+                namespace: EnterpriseTestService
+
+    server:
+      port: 8080
+      servlet:
+        context-path: /api
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus,env,configprops
+      endpoint:
+        health:
+          show-details: when-authorized
+          probes:
+            enabled: true
+      metrics:
+        export:
+          prometheus:
+            enabled: true
+
+    logging:
+      level:
+        com.gogidix.UserManagement.EnterpriseTestService: INFO
+        org.springframework.web: INFO
+        org.hibernate.SQL: WARN
+      pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+        file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+      file:
+        name: /app/logs/EnterpriseTestService-EnterpriseTestService.log
+
+    app:
+      name: EnterpriseTestService-EnterpriseTestService
+      version: 1.0.0
+      environment: production
+
+  redis-host: "redis-master"
+  redis-port: "6379"
+  kafka-bootstrap-servers: "kafka:9092"
+
+  logback-spring.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+        <springProfile name="prod">
+            <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+                <file>/app/logs/EnterpriseTestService-EnterpriseTestService.log</file>
+                <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                    <fileNamePattern>/app/logs/EnterpriseTestService-EnterpriseTestService.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                    <maxFileSize>100MB</maxFileSize>
+                    <maxHistory>30</maxHistory>
+                    <totalSizeCap>3GB</totalSizeCap>
+                </rollingPolicy>
+                <encoder>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                </encoder>
+            </appender>
+
+            <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                    <providers>
+                        <timestamp/>
+                        <logLevel/>
+                        <loggerName/>
+                        <message/>
+                        <mdc/>
+                        <stackTrace/>
+                    </providers>
+                </encoder>
+            </appender>
+
+            <root level="INFO">
+                <appender-ref ref="FILE"/>
+                <appender-ref ref="JSON"/>
+            </root>
+        </springProfile>
+    </configuration>

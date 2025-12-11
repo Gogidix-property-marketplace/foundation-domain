@@ -1,0 +1,67 @@
+server:
+  port: 9411
+
+spring:
+  application:
+    name: zipkin-server
+
+  # Zipkin Configuration
+  zipkin:
+    storage:
+      type: elasticsearch
+      elasticsearch:
+        hosts: http://elasticsearch:9200
+        index: zipkin
+        date-separator: '-'
+        timeout: 10000
+        max-requests: 64
+        username: elastic
+        password: gogidix123
+
+  # RabbitMQ for collecting traces
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: gogidix
+    password: gogidix123
+    virtual-host: /
+
+  # Actuator
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info,metrics,prometheus
+    endpoint:
+      health:
+        show-details: always
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+
+# Zipkin Server Configuration
+zipkin:
+  self-tracing:
+    enabled: false
+  query:
+    enabled: true
+    lookback: 86400000  # 24 hours
+  ui:
+    default-limit: 10
+    environment: production
+  collector:
+    rabbitmq:
+      enabled: true
+      addresses: rabbitmq:5672
+      username: gogidix
+      password: gogidix123
+      virtual-host: /
+      queue: zipkin
+      concurrency: 2
+
+# Logging
+logging:
+  level:
+    zipkin2: INFO
+    org.springframework: WARN

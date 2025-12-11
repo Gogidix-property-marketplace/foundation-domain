@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  server:
+    # Enable self-preservation
+    enable-self-preservation: true
+    # Time to wait for eviction of instances
+    eviction-interval-timer-in-ms: 5000
+    # Renews threshold
+    renewal-percent-threshold: 0.85
+    # Registry sync
+    registry-sync-retries: 0
+    # Peer node connections
+    peer-eureka-nodes-update-interval-ms: 1000
+    # Response cache
+    response-cache-auto-expiration-in-seconds: 180
+    # Registry cache
+    registry-sync-retry-wait-ms: 500
+    # Disable read-only registry cache
+    use-read-only-response-cache: false
+    # Max number of retries for peer to peer replication
+    max-retries-for-peer-replication: 3
+    # Max threads for status replication
+    max-threads-for-status-replication: 1
+    # Max threads for peer replication
+    max-threads-for-peer-replication: 20
+
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+    appname: eureka-server
+    # Instance ID for uniqueness
+    instance-id: ${spring.cloud.client.ip-address}:${spring.application.name}:${server.port}
+    # Lease renewal interval
+    lease-renewal-interval-in-seconds: 30
+    # Lease expiration duration
+    lease-expiration-duration-in-seconds: 90
+    # Secure port enabled
+    secure-port-enabled: true
+    # Non-secure port enabled
+    non-secure-port-enabled: true
+    # Secure port
+    secure-port: ${server.port}
+    # Non-secure port
+    non-secure-port: 8761
+    # IP address
+    ip-address: ${spring.cloud.client.ip-address}
+    # Prefer IP address
+    prefer-ip-address: true
+    # Status page URL
+    status-page-url: https://${eureka.hostname}:${server.port}/actuator/info
+    # Health check URL
+    health-check-url: https://${eureka.hostname}:${server.port}/actuator/health
+    # Home page URL
+    home-page-url: https://${eureka.hostname}:${server.port}/
+
+  client:
+    # Register with Eureka
+    register-with-eureka: true
+    # Fetch registry
+    fetch-registry: true
+    # Eureka server URLs
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+    # Registry fetch interval
+    registry-fetch-interval-seconds: 30
+    # Instance info replication interval
+    instance-info-replication-interval-seconds: 30
+    # Eureka server connect timeout
+    eureka-server-connect-timeout-seconds: 5
+    # Eureka server read timeout
+    eureka-server-read-timeout-seconds: 8
+    # Eureka server total connections
+    eureka-server-total-connections: 200
+    # Eureka server total connections per host
+    eureka-server-total-connections-per-host: 50
+    # Filter only up instances
+    filter-only-up-instances: true
+    # Gzip content
+    eureka-server-total-connections-per-host: 50
