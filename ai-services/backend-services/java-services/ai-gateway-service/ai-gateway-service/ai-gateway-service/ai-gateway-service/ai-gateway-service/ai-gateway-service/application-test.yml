@@ -1,0 +1,132 @@
+# Test Configuration for EnterpriseTestService-EnterpriseTestService
+
+spring:
+  application:
+    name: EnterpriseTestService-EnterpriseTestService
+    version: 1.0.0
+  profiles:
+    active: test
+
+  # Test Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+
+  # Redis Configuration (embedded for testing)
+  data:
+    redis:
+      host: localhost
+      port: 6370
+      timeout: 1000ms
+
+  # Cache Configuration
+  cache:
+    type: simple
+
+  # Kafka Configuration (disabled for unit tests)
+  kafka:
+    bootstrap-servers: localhost:9093
+    consumer:
+      group-id: EnterpriseTestService-EnterpriseTestService-test
+      auto-offset-reset: earliest
+
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+  # Session Configuration
+  session:
+    store-type: memory
+    timeout: 1800
+
+  # Security Configuration (minimal for testing)
+  security:
+    jwt:
+      secret: test-secret-key
+      expiration: 86400
+
+# Server Configuration
+server:
+  port: 0  # Random port for testing
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.UserManagement.EnterpriseTestService: DEBUG
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# Application-specific Configuration
+app:
+  name: EnterpriseTestService-EnterpriseTestService
+  version: 1.0.0
+  description: EnterpriseTestService EnterpriseTestService test environment
+  environment: test
+  debug: true
+
+  # Database Configuration
+  database:
+    primary:
+      type: h2
+      host: localhost
+      port: 9092
+      name: testdb
+
+  # Security Configuration
+  security:
+    jwt:
+      secret: test-secret-key
+
+  # Cache Configuration
+  cache:
+    type: simple
+    enabled: true
+
+  # Business Configuration
+  business:
+    items-per-page: 5
+    max-items-per-page: 20
+    default-language: en
+    session-timeout-minutes: 30
+    audit-enabled: false
+    rate-limiting-enabled: false
+    maintenance-mode: false
+
+  # External Services Configuration (disabled for testing)
+  external-services:
+    payment:
+      enabled: false
+    notification:
+      enabled: false

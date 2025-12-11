@@ -1,0 +1,41 @@
+server:
+  port: 8230
+
+spring:
+  application:
+    name: ai-gateway-service
+
+  profiles:
+    active: dev
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    com.gogidix.ai.gateway: DEBUG
+    org.springframework: INFO
+
+# AI Gateway Configuration
+ai:
+  gateway:
+    name: AI Gateway Service
+    version: 1.0.0
+    routes:
+      - path: /api/nlp/**
+        service: ai-nlp-processing-service
+        port: 8240
+      - path: /api/vision/**
+        service: ai-computer-vision-service
+        port: 8230
+      - path: /api/chatbot/**
+        service: ai-chatbot-service
+        port: 8230
