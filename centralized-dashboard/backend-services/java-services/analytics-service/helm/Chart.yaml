@@ -1,0 +1,38 @@
+apiVersion: v2
+name: EnterpriseTestService-EnterpriseTestService
+description: Helm chart for EnterpriseTestService EnterpriseTestService application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - EnterpriseTestService
+  - EnterpriseTestService
+  - java
+  - spring-boot
+  - microservices
+home: https://github.com/your-org/EnterpriseTestService-EnterpriseTestService
+sources:
+  - https://github.com/your-org/EnterpriseTestService-EnterpriseTestService
+maintainers:
+  - name: Gogidix Enterprise
+    email: author@example.com
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: kafka
+    version: 22.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+annotations:
+  category: Backend
+  licenses: MIT
+  documentation: https://docs.EnterpriseTestService.com
+  images: |
+    - name: EnterpriseTestService-EnterpriseTestService
+      image: EnterpriseTestService-EnterpriseTestService:1.0.0

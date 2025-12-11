@@ -1,0 +1,571 @@
+version: '3.8'
+
+services:
+  # Database Services
+  postgres-centralized:
+    image: postgres:15-alpine
+    container_name: postgres-centralized
+    environment:
+      POSTGRES_DB: centralized_dashboard
+      POSTGRES_USER: gogidix_user
+      POSTGRES_PASSWORD: gogidix_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./config/init/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - dashboard-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gogidix_user -d centralized_dashboard"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dashboard-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Java Backend Services
+  agent-dashboard-service:
+    build:
+      context: ./backend-services/java-services/agent-dashboard-service
+      dockerfile: Dockerfile
+    container_name: agent-dashboard-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  alert-management-service:
+    build:
+      context: ./backend-services/java-services/alert-management-service
+      dockerfile: Dockerfile
+    container_name: alert-management-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  analytics-service:
+    build:
+      context: ./backend-services/java-services/analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  centralized-dashboard:
+    build:
+      context: .
+      dockerfile: docker/centralized-dashboard/Dockerfile
+    container_name: centralized-dashboard
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  custom-dashboard-builder:
+    build:
+      context: ./backend-services/java-services/custom-dashboard-builder
+      dockerfile: Dockerfile
+    container_name: custom-dashboard-builder
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8005
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  executive-dashboard:
+    build:
+      context: ./backend-services/java-services/executive-dashboard
+      dockerfile: Dockerfile
+    container_name: executive-dashboard
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8006
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  metrics-service:
+    build:
+      context: ./backend-services/java-services/metrics-service
+      dockerfile: Dockerfile
+    container_name: metrics-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8007
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  provider-dashboard-service:
+    build:
+      context: ./backend-services/java-services/provider-dashboard-service
+      dockerfile: Dockerfile
+    container_name: provider-dashboard-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8008
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  reporting-service:
+    build:
+      context: ./backend-services/java-services/reporting-service
+      dockerfile: Dockerfile
+    container_name: reporting-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-centralized:5432/centralized_dashboard
+      SPRING_DATASOURCE_USERNAME: gogidix_user
+      SPRING_DATASOURCE_PASSWORD: gogidix_password
+      SPRING_REDIS_HOST: redis-cache
+      SPRING_REDIS_PORT: 6379
+      SERVER_PORT: 8009
+    ports:
+      - "8009:8009"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  # Node.js Web Services
+  alert-center-web:
+    build:
+      context: .
+      dockerfile: docker/alert-center-web/Dockerfile
+    container_name: alert-center-web
+    environment:
+      NODE_ENV: production
+      PORT: 8010
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8010:8010"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  analytics-dashboard-web:
+    build:
+      context: ./backend-services/nodejs-services/analytics-dashboard-web
+      dockerfile: Dockerfile
+    container_name: analytics-dashboard-web
+    environment:
+      NODE_ENV: production
+      PORT: 8011
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8011:8011"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  custom-report-builder:
+    build:
+      context: ./backend-services/nodejs-services/custom-report-builder
+      dockerfile: Dockerfile
+    container_name: custom-report-builder
+    environment:
+      NODE_ENV: production
+      PORT: 8012
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8012:8012"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  dashboard-web:
+    build:
+      context: ./backend-services/nodejs-services/dashboard-web
+      dockerfile: Dockerfile
+    container_name: dashboard-web
+    environment:
+      NODE_ENV: production
+      PORT: 8013
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8013:8013"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  executive-dashboard-web:
+    build:
+      context: ./backend-services/nodejs-services/executive-dashboard-web
+      dockerfile: Dockerfile
+    container_name: executive-dashboard-web
+    environment:
+      NODE_ENV: production
+      PORT: 8014
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8014:8014"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  real-time-dashboard:
+    build:
+      context: ./backend-services/nodejs-services/real-time-dashboard
+      dockerfile: Dockerfile
+    container_name: real-time-dashboard
+    environment:
+      NODE_ENV: production
+      PORT: 8015
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8015:8015"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  shared-components-web:
+    build:
+      context: ./backend-services/nodejs-services/shared-components-web
+      dockerfile: Dockerfile
+    container_name: shared-components-web
+    environment:
+      NODE_ENV: production
+      PORT: 8016
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8016:8016"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  visualization-web:
+    build:
+      context: ./backend-services/nodejs-services/visualization-web
+      dockerfile: Dockerfile
+    container_name: visualization-web
+    environment:
+      NODE_ENV: production
+      PORT: 8017
+      DB_HOST: postgres-centralized
+      DB_PORT: 5432
+      DB_NAME: centralized_dashboard
+      DB_USER: gogidix_user
+      DB_PASSWORD: gogidix_password
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+    ports:
+      - "8017:8017"
+    depends_on:
+      postgres-centralized:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - dashboard-network
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+  # Additional Services
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - agent-dashboard-service
+      - alert-management-service
+      - centralized-dashboard
+      - dashboard-web
+    networks:
+      - dashboard-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - dashboard-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: gogidix_admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - dashboard-network
+    restart: unless-stopped
+
+# Network Configuration
+networks:
+  dashboard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volume Configuration
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

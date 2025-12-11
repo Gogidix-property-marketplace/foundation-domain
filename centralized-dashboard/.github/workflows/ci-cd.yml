@@ -1,0 +1,272 @@
+name: Centralized Dashboard CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Gogidix-Domain/foundation-domain/centralized-dashboard/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'Gogidix-Domain/foundation-domain/centralized-dashboard/**'
+
+env:
+  REGISTRY: ghcr.io
+  JAVA_VERSION: '21'
+  NODE_VERSION: '18'
+
+jobs:
+  # Java Service Build & Test
+  java-build:
+    name: Java Service Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build Java service
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/java-services/centralized-dashboard
+      run: |
+        mvn clean compile -q
+        mvn test -q
+        mvn package -DskipTests
+
+    - name: Generate Java test report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: Java Test Results
+        path: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/java-services/centralized-dashboard/target/surefire-reports/*.xml
+        reporter: java-junit
+
+    - name: Upload Java build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: centralized-dashboard-jar
+        path: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/java-services/centralized-dashboard/target/*.jar
+        retention-days: 7
+
+  # Node.js Services Build & Test
+  nodejs-build:
+    name: Node.js Services Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - dashboard-web
+          - alert-center-web
+          - analytics-dashboard-web
+          - custom-report-builder
+          - executive-dashboard-web
+          - real-time-dashboard
+          - shared-components-web
+          - visualization-web
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/nodejs-services/${{ matrix.service }}/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/nodejs-services/${{ matrix.service }}
+      run: npm ci
+
+    - name: Run linting
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/nodejs-services/${{ matrix.service }}
+      run: npm run lint --if-present
+
+    - name: Run tests
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/nodejs-services/${{ matrix.service }}
+      run: npm test --if-present
+
+    - name: Build for production
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/nodejs-services/${{ matrix.service }}
+      run: npm run build --if-present
+
+  # Security Scanning
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: [java-build, nodejs-build]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Code Quality Checks
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Run SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Docker Build (only on main/master)
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [java-build, nodejs-build, security-scan]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    strategy:
+      matrix:
+        service:
+          - centralized-dashboard
+          - dashboard-web
+          - alert-center-web
+          - analytics-dashboard-web
+          - custom-report-builder
+          - executive-dashboard-web
+          - real-time-dashboard
+          - shared-components-web
+          - visualization-web
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./Gogidix-Domain/foundation-domain/centralized-dashboard
+        file: ./Gogidix-Domain/foundation-domain/centralized-dashboard/docker/${{ matrix.service }}/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [java-build, nodejs-build]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: centralized_dashboard_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+
+    - name: Wait for PostgreSQL
+      run: |
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+
+    - name: Run integration tests
+      working-directory: ./Gogidix-Domain/foundation-domain/centralized-dashboard/backend-services/java-services/centralized-dashboard
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/centralized_dashboard_test
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+      run: |
+        mvn verify -P integration-tests
+
+  # Deployment Status
+  deployment-status:
+    name: Update Deployment Status
+    runs-on: ubuntu-latest
+    needs: [java-build, nodejs-build, security-scan, docker-build, integration-tests]
+    if: always()
+
+    steps:
+    - name: Deployment Success
+      if: needs.docker-build.result == 'success'
+      run: |
+        echo "✅ All checks passed - Ready for deployment!"
+        echo "🚀 Centralized Dashboard is production-ready!"
+
+    - name: Deployment Failure
+      if: needs.docker-build.result == 'failure' || needs.java-build.result == 'failure' || needs.nodejs-build.result == 'failure'
+      run: |
+        echo "❌ Deployment pipeline failed"
+        echo "🔧 Please check the failed jobs and fix the issues"
+        exit 1
