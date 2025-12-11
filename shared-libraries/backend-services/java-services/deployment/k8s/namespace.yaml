@@ -1,0 +1,56 @@
+# ✨ GOGIDIX PLATFORM - KUBERNETES NAMESPACES ✨
+# Enterprise namespace configuration for production environment
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-prod
+  labels:
+    name: gogidix-prod
+    environment: production
+    managed-by: gogidix-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-staging
+  labels:
+    name: gogidix-staging
+    environment: staging
+    managed-by: gogidix-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-dev
+  labels:
+    name: gogidix-dev
+    environment: development
+    managed-by: gogidix-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-monitoring
+  labels:
+    name: gogidix-monitoring
+    purpose: monitoring
+    managed-by: gogidix-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-logging
+  labels:
+    name: gogidix-logging
+    purpose: logging
+    managed-by: gogidix-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gogidix-infra
+  labels:
+    name: gogidix-infra
+    purpose: infrastructure
+    managed-by: gogidix-platform

@@ -1,0 +1,52 @@
+package com.gogidix.platform.common.monitoring.health;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.actuator.health.Health;
+import org.springframework.boot.actuator.health.HealthIndicator;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.time.Instant;
+
+/**
+ * Health indicator for application status
+ */
+@Slf4j
+@Component
+@ConditionalOnClass({Health.class, HealthIndicator.class})
+public class ApplicationHealthIndicator implements HealthIndicator {
+
+    private final Instant startTime = Instant.now();
+
+    @Override
+    public Health health() {
+        try {
+            Duration uptime = Duration.between(startTime, Instant.now());
+
+            return Health.up()
+                    .withDetail("application.name", "gogidix-platform")
+                    .withDetail("uptime.seconds", uptime.getSeconds())
+                    .withDetail("uptime.formatted", formatDuration(uptime))
+                    .withDetail("start.time", startTime.toString())
+                    .withDetail("health.check.time", Instant.now().toString())
+                    .build();
+
+        } catch (Exception ex) {
+            log.error("Health check failed", ex);
+            return Health.down()
+                    .withDetail("error", ex.getMessage())
+                    .withException(ex)
+                    .build();
+        }
+    }
+
+    private String formatDuration(Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.toHoursPart();
+        long minutes = duration.toMinutesPart();
+        long seconds = duration.toSecondsPart();
+
+        return String.format("%dd %dh %dm %ds", days, hours, minutes, seconds);
+    }
+}

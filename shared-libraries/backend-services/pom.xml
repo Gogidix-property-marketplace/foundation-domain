@@ -1,0 +1,579 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ✨ GOGIDIX ENTERPRISE SHARED LIBRARIES ✨ -->
+    <!-- Mission-Critical Infrastructure for Property Marketplace Platform -->
+    <!-- Architectural Excellence: Amazon/Google/Netflix Standards -->
+
+    <groupId>com.gogidix.platform</groupId>
+    <artifactId>gogidix-shared-libraries</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Gogidix Platform Shared Libraries</name>
+    <description>Enterprise-grade shared libraries powering the Gogidix Property Marketplace -
+        a hyper-scale, cloud-native platform designed for mission-critical operations.</description>
+
+    <url>https://platform.gogidix.com</url>
+    <inceptionYear>2025</inceptionYear>
+
+    <organization>
+        <name>Gogidix Platform Engineering</name>
+        <url>https://engineering.gogidix.com</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>Gogidix Enterprise License</name>
+            <url>https://license.gogidix.com/enterprise</url>
+            <distribution>repo</distribution>
+            <comments>Proprietary enterprise software license</comments>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>agent-a-platform-architect</id>
+            <name>Agent A - Platform Architect</name>
+            <email>agent.a@gogidix.com</email>
+            <organization>Gogidix Platform Engineering</organization>
+            <roles>
+                <role>architect</role>
+                <role>lead-developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <!-- === PROPERTIES: ENTERPRISE CONFIGURATION === -->
+    <properties>
+        <!-- Java & Build Configuration -->
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Spring Boot Enterprise Stack -->
+        <spring-boot.version>3.2.2</spring-boot.version>
+        <spring-framework.version>6.1.3</spring-framework.version>
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <spring-security.version>6.2.1</spring-security.version>
+
+        <!-- Testing & Quality Assurance -->
+        <junit.version>5.10.2</junit.version>
+        <mockito.version>5.11.0</mockito.version>
+        <testcontainers.version>1.19.6</testcontainers.version>
+        <assertj.version>3.25.3</assertj.version>
+
+        <!-- Security & Cryptography -->
+        <jjwt.version>0.12.5</jjwt.version>
+        <bouncycastle.version>1.77</bouncycastle.version>
+
+        <!-- Performance & Monitoring -->
+        <micrometer.version>1.12.3</micrometer.version>
+        <caffeine.version>3.1.8</caffeine.version>
+
+        <!-- Cloud & Integration -->
+        <aws-sdk.version>2.23.19</aws-sdk.version>
+        <jackson.version>2.16.1</jackson.version>
+
+        <!-- Code Quality Standards -->
+        <sonar.java.coverage.plugin>jacoco</sonar.java.coverage.plugin>
+        <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.qualitygate.wait>true</sonar.qualitygate.wait>
+
+        <!-- Build & Deployment -->
+        <maven.compiler.plugin.version>3.12.1</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
+        <maven.failsafe.plugin.version>3.2.5</maven.failsafe.plugin.version>
+        <jacoco.plugin.version>0.8.11</jacoco.plugin.version>
+        <spotbugs.plugin.version>4.8.2.0</spotbugs.plugin.version>
+        <checkstyle.plugin.version>3.3.1</checkstyle.plugin.version>
+        <pmd.plugin.version>3.21.2</pmd.plugin.version>
+
+        <!-- Docker & Containerization -->
+        <dockerfile-maven-plugin.version>1.4.13</dockerfile-maven-plugin.version>
+        <jib-maven-plugin.version>3.4.0</jib-maven-plugin.version>
+    </properties>
+
+    <!-- === MODULES: ENTERPRISE LIBRARY ECOSYSTEM === -->
+    <modules>
+        <!-- Core Foundation Libraries -->
+        <module>java-services/gogidix-common-core</module>
+        <module>java-services/gogidix-common-security</module>
+        <module>java-services/gogidix-common-messaging</module>
+
+        <!-- Infrastructure Integration Libraries -->
+        <module>java-services/gogidix-common-api-client</module>
+
+        <!-- Additional Libraries -->
+        <module>java-services/gogidix-common-audit</module>
+        <module>java-services/gogidix-common-cache</module>
+        <module>java-services/gogidix-common-client</module>
+        <module>java-services/gogidix-common-monitoring</module>
+        <module>java-services/gogidix-common-persistence</module>
+        <module>java-services/gogidix-common-testing</module>
+        <module>java-services/gogidix-common-validation</module>
+
+        <!-- Specialized Libraries (Phase 2 Implementation) -->
+        <!-- <module>gogidix-common-data</module> -->
+        <!-- <module>gogidix-common-config</module> -->
+        <!-- <module>gogidix-common-auth</module> -->
+        <!-- <module>gogidix-common-crypto</module> -->
+        <!-- <module>gogidix-common-events</module> -->
+    </modules>
+
+    <!-- === DEPENDENCY MANAGEMENT: ENTERPRISE ALIGNMENT === -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Internal Dependencies -->
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-messaging</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-api-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-audit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-cache</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-monitoring</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-persistence</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-testing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.gogidix.platform</groupId>
+                <artifactId>gogidix-common-validation</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Security & Cryptography -->
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+
+            <!-- Performance & Caching -->
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
+            </dependency>
+
+            <!-- Monitoring & Observability -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-registry-prometheus</artifactId>
+                <version>${micrometer.version}</version>
+            </dependency>
+
+            <!-- Testing Dependencies -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-bom</artifactId>
+                <version>${mockito.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- AWS SDK -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- === BUILD CONFIGURATION: ENTERPRISE STANDARDS === -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Spring Boot Plugin -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.springframework.boot</groupId>
+                                <artifactId>spring-boot-configuration-processor</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Compiler Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.plugin.version}</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <release>21</release>
+                        <compilerArgs>
+                            <arg>--enable-preview</arg>
+                            <arg>-Xlint:unchecked</arg>
+                            <arg>-Xlint:deprecation</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Surefire Plugin (Unit Tests) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.plugin.version}</version>
+                    <configuration>
+                        <includes>
+                            <include>**/*Test.java</include>
+                            <include>**/*Tests.java</include>
+                        </includes>
+                        <excludes>
+                            <exclude>**/*IT.java</exclude>
+                            <exclude>**/*IntegrationTest.java</exclude>
+                        </excludes>
+                        <parallel>methods</parallel>
+                        <threadCount>4</threadCount>
+                        <useSystemClassLoader>false</useSystemClassLoader>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Failsafe Plugin (Integration Tests) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven.failsafe.plugin.version}</version>
+                    <configuration>
+                        <includes>
+                            <include>**/*IT.java</include>
+                            <include>**/*IntegrationTest.java</include>
+                        </includes>
+                        <parallel>classes</parallel>
+                        <threadCount>2</threadCount>
+                    </configuration>
+                </plugin>
+
+                <!-- JaCoCo Code Coverage -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>check</id>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>INSTRUCTION</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.85</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- SpotBugs Security Analysis -->
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.plugin.version}</version>
+                    <configuration>
+                        <effort>Max</effort>
+                        <threshold>Low</threshold>
+                        <xmlOutput>true</xmlOutput>
+                        <failOnError>true</failOnError>
+                    </configuration>
+                </plugin>
+
+                <!-- Checkstyle Code Quality -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${checkstyle.plugin.version}</version>
+                    <configuration>
+                        <configLocation>checkstyle/google_checks.xml</configLocation>
+                        <violationSeverity>error</violationSeverity>
+                        <failOnViolation>true</failOnViolation>
+                    </configuration>
+                </plugin>
+
+                <!-- PMD Static Analysis -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-pmd-plugin</artifactId>
+                    <version>${pmd.plugin.version}</version>
+                    <configuration>
+                        <minimumTokens>100</minimumTokens>
+                        <targetJdk>${maven.compiler.target}</targetJdk>
+                        <rulesets>
+                            <ruleset>/rulesets/java/quickstart.xml</ruleset>
+                            <ruleset>/rulesets/java/security.xml</ruleset>
+                        </rulesets>
+                        <failOnViolation>true</failOnViolation>
+                    </configuration>
+                </plugin>
+
+                <!-- Jib Containerization (Google Cloud Native) -->
+                <plugin>
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>jib-maven-plugin</artifactId>
+                    <version>${jib-maven-plugin.version}</version>
+                    <configuration>
+                        <from>
+                            <image>openjdk:21-jre-slim</image>
+                        </from>
+                        <to>
+                            <image>gogidix-platform/shared-libraries:${project.version}</image>
+                        </to>
+                        <container>
+                            <jvmFlags>
+                                <jvmFlag>-XX:+UseContainerSupport</jvmFlag>
+                                <jvmFlag>-XX:MaxRAMPercentage=75.0</jvmFlag>
+                                <jvmFlag>-Djava.security.egd=file:/dev/./urandom</jvmFlag>
+                            </jvmFlags>
+                        </container>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <!-- Global Plugin Configuration -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- === DISTRIBUTION MANAGEMENT: ENTERPRISE REPOSITORIES === -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>gogidix-snapshots</id>
+            <name>Gogidix Platform Snapshots</name>
+            <url>https://artifacts.gogidix.com/libs-snapshot-local</url>
+        </snapshotRepository>
+        <repository>
+            <id>gogidix-releases</id>
+            <name>Gogidix Platform Releases</name>
+            <url>https://artifacts.gogidix.com/libs-release-local</url>
+        </repository>
+    </distributionManagement>
+
+    <!-- === PROFILES: ENVIRONMENT-SPECIFIC CONFIGURATIONS === -->
+    <profiles>
+        <!-- Development Profile -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <env>development</env>
+            </properties>
+        </profile>
+
+        <!-- Production Profile -->
+        <profile>
+            <id>prod</id>
+            <properties>
+                <env>production</env>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Performance Testing Profile -->
+        <profile>
+            <id>performance</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*PerformanceTest.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>

@@ -1,0 +1,297 @@
+# ✨ GOGIDIX PLATFORM - ALERTING RULES ✨
+# Enterprise alerting rules for critical system monitoring
+
+groups:
+  - name: gogidix-platform.rules
+    rules:
+      # Service Health Alerts
+      - alert: ServiceDown
+        expr: up{job=~"gogidix-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+          runbook_url: "https://runbooks.gogidix.com/service-down"
+
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{job=~"gogidix-.*",status=~"5.."}[5m])) by (job) / sum(rate(http_requests_total{job=~"gogidix-.*"}[5m])) by (job) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://runbooks.gogidix.com/high-error-rate"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~"gogidix-.*"}[5m])) by (job)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "High latency on {{ $labels.job }}"
+          description: "95th percentile latency is {{ $value }}s for the last 5 minutes"
+          runbook_url: "https://runbooks.gogidix.com/high-latency"
+
+      - alert: CriticalLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~"gogidix-.*"}[5m])) by (job)) > 2
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Critical latency on {{ $labels.job }}"
+          description: "95th percentile latency is {{ $value }}s for the last 2 minutes"
+          runbook_url: "https://runbooks.gogidix.com/critical-latency"
+
+      # Resource Usage Alerts
+      - alert: HighCPUUsage
+        expr: sum(rate(process_cpu_seconds_total{job=~"gogidix-.*"}[5m])) by (job) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: "CPU usage is {{ $value }}% for the last 10 minutes"
+          runbook_url: "https://runbooks.gogidix.com/high-cpu"
+
+      - alert: CriticalCPUUsage
+        expr: sum(rate(process_cpu_seconds_total{job=~"gogidix-.*"}[5m])) by (job) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Critical CPU usage on {{ $labels.job }}"
+          description: "CPU usage is {{ $value }}% for the last 5 minutes"
+          runbook_url: "https://runbooks.gogidix.com/critical-cpu"
+
+      - alert: HighMemoryUsage
+        expr: sum(jvm_memory_used_bytes{job=~"gogidix-.*"}) by (job) / sum(jvm_memory_max_bytes{job=~"gogidix-.*"}) by (job) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} for the last 10 minutes"
+          runbook_url: "https://runbooks.gogidix.com/high-memory"
+
+      - alert: CriticalMemoryUsage
+        expr: sum(jvm_memory_used_bytes{job=~"gogidix-.*"}) by (job) / sum(jvm_memory_max_bytes{job=~"gogidix-.*"}) by (job) > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Critical memory usage on {{ $labels.job }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://runbooks.gogidix.com/critical-memory"
+
+      # Database Alerts
+      - alert: DatabaseDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+          runbook_url: "https://runbooks.gogidix.com/database-down"
+
+      - alert: DatabaseHighConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "High database connections"
+          description: "Database has {{ $value }} active connections"
+          runbook_url: "https://runbooks.gogidix.com/db-high-connections"
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_statements_mean_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value }}s"
+          runbook_url: "https://runbooks.gogidix.com/slow-queries"
+
+      # Redis Alerts
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute"
+          runbook_url: "https://runbooks.gogidix.com/redis-down"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_used_memory_bytes{job="redis-exporter"} / redis_memory_max_bytes{job="redis-exporter"} > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://runbooks.gogidix.com/redis-high-memory"
+
+      # Kafka Alerts
+      - alert: KafkaDown
+        expr: up{job="kafka-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data
+        annotations:
+          summary: "Kafka is down"
+          description: "Kafka message queue has been down for more than 1 minute"
+          runbook_url: "https://runbooks.gogidix.com/kafka-down"
+
+      - alert: KafkaConsumerLag
+        expr: sum(kafka_consumer_lag{job=~"gogidix-.*"}) by (job) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: data
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "High Kafka consumer lag for {{ $labels.job }}"
+          description: "Consumer lag is {{ $value }} messages"
+          runbook_url: "https://runbooks.gogidix.com/kafka-lag"
+
+      # Infrastructure Alerts
+      - alert: NodeDown
+        expr: up{job="node-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Node {{ $labels.instance }} is down"
+          description: "Node has been down for more than 1 minute"
+          runbook_url: "https://runbooks.gogidix.com/node-down"
+
+      - alert: NodeHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High CPU usage on node {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% for the last 10 minutes"
+          runbook_url: "https://runbooks.gogidix.com/node-high-cpu"
+
+      - alert: NodeHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "High memory usage on node {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% for the last 10 minutes"
+          runbook_url: "https://runbooks.gogidix.com/node-high-memory"
+
+      - alert: NodeDiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.mountpoint }}"
+          runbook_url: "https://runbooks.gogidix.com/low-disk-space"
+
+      - alert: NodeDiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          team: infra
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.mountpoint }}"
+          runbook_url: "https://runbooks.gogidix.com/critical-disk-space"
+
+      # Business Metrics Alerts
+      - alert: LowRequestRate
+        expr: sum(rate(http_requests_total{job=~"gogidix-.*"}[5m])) < 10
+        for: 15m
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "Low request rate"
+          description: "Request rate is {{ $value }} requests per second for the last 15 minutes"
+          runbook_url: "https://runbooks.gogidix.com/low-request-rate"
+
+      - alert: NoNewUsers
+        expr: increase(gogidix_users_created_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "No new users registered"
+          description: "No new user registrations in the last 2 hours"
+          runbook_url: "https://runbooks.gogidix.com/no-new-users"
+
+      - alert: PaymentFailures
+        expr: sum(rate(gogidix_payments_failed_total[5m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: business
+        annotations:
+          summary: "High payment failure rate"
+          description: "Payment failure rate is {{ $value }} per second for the last 5 minutes"
+          runbook_url: "https://runbooks.gogidix.com/payment-failures"
+
+      # Certificate Alerts
+      - alert: SSLCertificateExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+        for: 1h
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+          runbook_url: "https://runbooks.gogidix.com/ssl-expiring"
+
+      - alert: SSLCertificateExpired
+        expr: probe_ssl_earliest_cert_expiry - time() < 0
+        for: 1m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "SSL certificate has expired"
+          description: "SSL certificate for {{ $labels.instance }} has expired"
+          runbook_url: "https://runbooks.gogidix.com/ssl-expired"

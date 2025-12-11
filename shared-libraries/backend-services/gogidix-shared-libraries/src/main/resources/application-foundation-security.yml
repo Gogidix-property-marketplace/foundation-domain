@@ -1,0 +1,279 @@
+# GOGIDIX FOUNDATION PLATFORM - UNIFIED SECURITY CONFIGURATION
+# Cross-Domain Authentication & RBAC Integration
+
+spring:
+  profiles:
+    include: foundation-core, foundation-security, foundation-audit, foundation-monitoring, foundation-cache, foundation-validation, foundation-persistence, foundation-client, foundation-messaging
+
+  # Foundation Security Configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/auth/realms/gogidix}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8081/auth/realms/gogidix/protocol/openid-connect/certs}
+
+  # Foundation Audit Configuration
+  audit:
+    enabled: true
+    async: true
+    include-payload: false
+    exclude-paths: /actuator/**, /health, /metrics, /eureka/**
+
+  # Foundation Monitoring Configuration
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
+      domain: foundation
+
+# Foundation Platform Security Configuration
+gogidix:
+  foundation:
+    security:
+      keycloak:
+        enabled: true
+        auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8081/auth}
+        realm: ${KEYCLOAK_REALM:gogidix}
+        client-id: ${KEYCLOAK_CLIENT_ID:gogidix-platform}
+        client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+        public-client: false
+        bearer-only: true
+        principal-attribute: preferred_username
+
+      rbac:
+        enabled: true
+        default-role: USER
+        admin-roles: ADMIN,PLATFORM_ADMIN
+        user-roles: USER,PROPERTY_MANAGER,AGENT,TENANT
+
+      cors:
+        enabled: true
+        allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080,https://gogidix.com}
+        allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+        allowed-headers: "*"
+        allow-credentials: true
+
+      rate-limiting:
+        enabled: true
+        default-limit: 1000
+        window-seconds: 60
+        exempt-roles: ADMIN,PLATFORM_ADMIN
+
+    audit:
+      enabled: true
+      include-payload: false
+      exclude-paths: /actuator/**, /health, /metrics, /eureka/**
+      async: true
+      async-pool-size: 10
+
+    monitoring:
+      enabled: true
+      custom-metrics: true
+      include-method-signatures: false
+
+    cache:
+      provider: caffeine
+      default-ttl: 3600
+      max-entries: 10000
+
+    validation:
+      enabled: true
+      fail-fast: true
+
+# Management Endpoints Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,configprops,env,mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 30s
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
+      domain: foundation
+      zone: ${EUREKA_ZONE:development}
+      environment: ${ENVIRONMENT:development}
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.platform.common: INFO
+    org.springframework.security: INFO
+    org.springframework.cloud: INFO
+    org.keycloak: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-},%X{userId:-},%X{sessionId:-}] [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId:-},%X{spanId:-},%X{userId:-},%X{sessionId:-}] [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/${spring.application.name}.log
+    max-size: 100MB
+    max-history: 30
+
+# Cross-Domain Service Communication Security
+services:
+  authentication:
+    url: ${AUTHENTICATION_SERVICE_URL:http://localhost:8081/authentication-service}
+    timeout: 30s
+    retry: 3
+  user-management:
+    url: ${USER_MANAGEMENT_SERVICE_URL:http://localhost:8082/user-management-service}
+    timeout: 30s
+    retry: 3
+  property-management:
+    url: ${PROPERTY_MANAGEMENT_SERVICE_URL:http://localhost:8083/property-management-service}
+    timeout: 30s
+    retry: 3
+  booking-management:
+    url: ${BOOKING_MANAGEMENT_SERVICE_URL:http://localhost:8086/booking-management-service}
+    timeout: 30s
+    retry: 3
+  billing-management:
+    url: ${BILLING_MANAGEMENT_SERVICE_URL:http://localhost:8084/billing-invoicing-service}
+    timeout: 30s
+    retry: 3
+  notification-service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8087/notification-service}
+    timeout: 30s
+    retry: 3
+  reporting-analytics:
+    url: ${REPORTING_ANALYTICS_SERVICE_URL:http://localhost:8088/reporting-service}
+    timeout: 30s
+    retry: 3
+
+# Event-Driven Security Configuration
+kafka:
+  security:
+    protocol: SASL_SSL
+    sasl:
+      mechanism: PLAIN
+      jaas:
+        config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_SASL_USERNAME:kafka}" password="${KAFKA_SASL_PASSWORD:kafka-secret}";
+
+# Redis Security Configuration
+redis:
+  password: ${REDIS_PASSWORD:}
+  ssl: false
+
+# Database Security Configuration
+datasource:
+  url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gogidix}
+  username: ${DATABASE_USERNAME:gogidix_user}
+  password: ${DATABASE_PASSWORD:gogidix_password}
+  hikari:
+    maximum-pool-size: 20
+    minimum-idle: 5
+    idle-timeout: 300000
+    connection-timeout: 20000
+    leak-detection-threshold: 60000
+
+# Environment-specific Security Configurations
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+gogidix:
+  foundation:
+    security:
+      keycloak:
+        auth-server-url: http://localhost:8081/auth
+        realm: gogidix-dev
+      rbac:
+        enabled: true
+        default-role: ADMIN
+      cors:
+        allowed-origins: http://localhost:3000,http://localhost:8080,http://localhost:4200
+      rate-limiting:
+        enabled: false
+
+logging:
+  level:
+    com.gogidix.platform.common: DEBUG
+    org.springframework.security: DEBUG
+    org.keycloak: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+gogidix:
+  foundation:
+    security:
+      keycloak:
+        auth-server-url: ${STAGING_KEYCLOAK_URL}
+        realm: gogidix-staging
+      rbac:
+        enabled: true
+        default-role: USER
+      cors:
+        allowed-origins: ${STAGING_CORS_ORIGINS}
+      rate-limiting:
+        enabled: true
+        default-limit: 500
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+gogidix:
+  foundation:
+    security:
+      keycloak:
+        auth-server-url: ${PROD_KEYCLOAK_URL}
+        realm: gogidix-prod
+        ssl-required: all
+        confidential-port: 0
+      rbac:
+        enabled: true
+        default-role: USER
+        admin-roles: ADMIN,PLATFORM_ADMIN,PROD_ADMIN
+      cors:
+        allowed-origins: ${PROD_CORS_ORIGINS}
+        allowed-methods: GET,POST,PUT,DELETE,PATCH
+      rate-limiting:
+        enabled: true
+        default-limit: 100
+        window-seconds: 60
+
+logging:
+  level:
+    com.gogidix.platform.common: WARN
+    org.springframework.security: WARN
+    org.keycloak: WARN

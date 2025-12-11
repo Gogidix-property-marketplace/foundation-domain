@@ -1,0 +1,33 @@
+# Gogidix Common Validation Configuration
+gogidix:
+  validation:
+    enabled: true
+    fail-fast: true  # Stop validation on first error
+    message-interpolation: parameterized
+
+# Spring Boot Validation Configuration
+spring:
+  validation:
+    enabled: true
+    mode: fail-fast
+
+# Hibernate Validator Configuration
+hibernate:
+  validator:
+    fail-fast: true
+    # Message interpolation
+    message-interpolation:
+      use-parameter-message-interpolator: true
+    # Custom constraint mapping
+    constraint-mapping:
+      - classpath:validation-constraints.xml
+    # Method validation
+    method-validation:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.platform.common.validation: INFO
+    org.hibernate.validator: DEBUG
+    jakarta.validation: DEBUG

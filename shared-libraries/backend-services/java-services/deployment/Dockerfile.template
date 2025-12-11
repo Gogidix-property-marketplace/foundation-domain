@@ -1,0 +1,91 @@
+# ✨ GOGIDIX PLATFORM - ENTERPRISE DOCKERFILE TEMPLATE ✨
+# Multi-stage build for Java 21 Spring Boot Microservices
+# Optimized for production with security and performance
+#
+# Usage: Copy this template to your service directory and replace placeholders:
+# {{SERVICE_NAME}} - Your service name (e.g., billing-invoicing-service)
+# {{MAIN_CLASS}} - Your main class (e.g., com.gogidix.platform.billing.BillingInvoicingApplication)
+# {{SERVICE_PORT}} - Your service port (e.g., 8084)
+
+# =====================================================
+# BUILDER STAGE - Maven Build
+# =====================================================
+FROM maven:3.9.5-eclipse-temurin-21 AS builder
+
+# Set working directory
+WORKDIR /build
+
+# Copy pom.xml first for better Docker layer caching
+COPY pom.xml .
+
+# Download dependencies
+RUN mvn dependency:go-offline -B
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# =====================================================
+# RUNTIME STAGE - JRE Runtime
+# =====================================================
+FROM eclipse-temurin:21-jre-alpine
+
+# Create application user for security
+RUN addgroup -g 1001 gogidix && \
+    adduser -u 1001 -G gogidix -s /bin/sh -D gogidix
+
+# Install required packages
+RUN apk add --no-cache \
+    curl \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Set timezone
+ENV TZ=UTC
+
+# Set working directory
+WORKDIR /app
+
+# Copy JAR from builder stage
+COPY --from=builder /build/target/{{SERVICE_NAME}}.jar app.jar
+
+# Create non-root directories for temp files
+RUN mkdir -p /app/tmp && \
+    chown -R gogidix:gogidix /app
+
+# Switch to non-root user
+USER gogidix
+
+# Expose port
+EXPOSE {{SERVICE_PORT}}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:{{SERVICE_PORT}}/actuator/health || exit 1
+
+# Set JVM options
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+             -XX:MaxRAMPercentage=75.0 \
+             -XX:+UseG1GC \
+             -XX:+UseStringDeduplication \
+             -XX:+OptimizeStringConcat \
+             -XX:+UseCompressedOops \
+             -XX:+UseCompressedClassPointers \
+             -Djava.security.egd=file:/dev/./urandom \
+             -Dspring.profiles.active=prod"
+
+# Set application properties
+ENV SPRING_APPLICATION_JSON="{\"server\":{\"port\":{{SERVICE_PORT}}}}"
+
+# Run the application
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]
+
+# Labels for metadata
+LABEL maintainer="Gogidix Platform Team <platform@gogidix.com>"
+LABEL version="1.0.0"
+LABEL description="Gogidix {{SERVICE_NAME}} - Enterprise microservice"
+LABEL org.opencontainers.image.source="https://github.com/gogidix/{{SERVICE_NAME}}"
+LABEL org.opencontainers.image.vendor="Gogidix Platform"
+LABEL org.opencontainers.image.licenses="Enterprise"

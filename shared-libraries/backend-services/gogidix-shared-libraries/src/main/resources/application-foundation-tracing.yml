@@ -1,0 +1,391 @@
+# GOGIDIX FOUNDATION PLATFORM - DISTRIBUTED TRACING CONFIGURATION
+# Zipkin, Jaeger, and OpenTelemetry Integration
+
+spring:
+  profiles:
+    include: foundation-core, foundation-security, foundation-audit, foundation-monitoring, foundation-cache, foundation-validation, foundation-persistence, foundation-client, foundation-messaging
+
+  # Spring Cloud Sleuth Configuration (for distributed tracing)
+  sleuth:
+    enabled: ${SLEUTH_ENABLED:true}
+    sampler:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}  # 10% sampling in production
+
+    # Trace Configuration
+    trace-id128: ${TRACE_ID_128:true}  # Use 128-bit trace IDs
+    supports-join: ${TRACING_SUPPORTS_JOIN:true}
+
+    # Baggage Configuration (propagates additional fields)
+    baggage:
+      enabled: ${BAGGAGE_ENABLED:true}
+      remote-fields: ${BAGGAGE_REMOTE_FIELDS:user-id,session-id,correlation-id,tenant-id}
+      local-fields: ${BAGGAGE_LOCAL_FIELDS:user-id,session-id,correlation-id,tenant-id}
+
+    # HTTP Configuration
+    web:
+      enabled: ${TRACING_WEB_ENABLED:true}
+      client:
+        enabled: ${TRACING_HTTP_CLIENT_ENABLED:true}
+      skip-pattern: ${TRACING_SKIP_PATTERN:/actuator/**,/eureka/**,/health/**}
+
+    # Integration Configuration
+    integration:
+      enabled: ${TRACING_INTEGRATION_ENABLED:true}
+      webmvc:
+        enabled: ${TRACING_WEBMVC_ENABLED:true}
+      webflux:
+        enabled: ${TRACING_WEBFLUX_ENABLED:true}
+      feign:
+        enabled: ${TRACING_FEIGN_ENABLED:true}
+      zuul:
+        enabled: ${TRACING_ZUUL_ENABLED:false}
+
+    # Zipkin Configuration
+    zipkin:
+      base-url: ${ZIPKIN_BASE_URL:http://localhost:9411}
+      enabled: ${ZIPKIN_ENABLED:true}
+      message-timeout: ${ZIPKIN_MESSAGE_TIMEOUT:5}
+      connect-timeout: ${ZIPKIN_CONNECT_TIMEOUT:2}
+      read-timeout: ${ZIPKIN_READ_TIMEOUT:2}
+      compression:
+        enabled: ${ZIPKIN_COMPRESSION_ENABLED:true}
+
+      # Service Configuration
+      service:
+        name: ${spring.application.name}
+
+      # Span Configuration
+      span:
+        # Include specific HTTP headers
+        include-message-bodies: ${ZIPKIN_INCLUDE_MESSAGE_BODIES:false}
+        exclude-paths: ${ZIPKIN_EXCLUDE_PATHS:/actuator/**,/eureka/**,/health/**,/metrics/**,/prometheus/**}
+
+  # Zipkin Sender Configuration
+  zipkin:
+    sender:
+      type: ${ZIPKIN_SENDER_TYPE:web}  # Options: web, kafka, rabbit, activemq
+      url: ${ZIPKIN_SENDER_URL:http://localhost:9411/api/v2/spans}
+
+    # Kafka Sender (alternative to web)
+    kafka:
+      topic: ${ZIPKIN_KAFKA_TOPIC:zipkin}
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    # RabbitMQ Sender (alternative to web)
+    rabbitmq:
+      queue: ${ZIPKIN_RABBITMQ_QUEUE:zipkin}
+      address: ${RABBITMQ_ADDRESS:localhost:5672}
+
+# OpenTelemetry Configuration (for comprehensive observability)
+otel:
+  enabled: ${OPENTELEMETRY_ENABLED:true}
+
+  # Service Configuration
+  service:
+    name: ${spring.application.name}
+    version: ${SERVICE_VERSION:1.0.0}
+    instance-id: ${HOSTNAME:localhost}
+
+  # Resource Configuration
+  resource:
+    attributes:
+      service.name: ${spring.application.name}
+      service.version: ${SERVICE_VERSION:1.0.0}
+      service.namespace: gogidix
+      service.instance.id: ${HOSTNAME:localhost}
+      deployment.environment: ${ENVIRONMENT:development}
+      host.name: ${HOSTNAME:localhost}
+
+  # Exporter Configuration
+  exporter:
+    # Zipkin Exporter
+    zipkin:
+      endpoint: ${ZIPKIN_OTLP_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+    # Jaeger Exporter
+    jaeger:
+      endpoint: ${JAEGER_ENDPOINT:http://localhost:14250}
+      protocol: grpc
+
+    # OTLP Exporter (for OpenTelemetry Collector)
+    otlp:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4317}
+      protocol: grpc
+      headers:
+        api-key: ${OTEL_API_KEY:}
+
+    # Prometheus Exporter (for metrics)
+    prometheus:
+      enabled: ${OTEL_PROMETHEUS_ENABLED:false}
+      host: ${OTEL_PROMETHEUS_HOST:0.0.0.0}
+      port: ${OTEL_PROMETHEUS_PORT:9464}
+
+  # Processor Configuration
+  processor:
+    # Batch Processor
+    batch:
+      enabled: ${OTEL_BATCH_PROCESSOR_ENABLED:true}
+      max-export-batch-size: ${OTEL_BATCH_MAX_EXPORT_SIZE:512}
+      max-export-time: ${OTEL_BATCH_MAX_EXPORT_TIME:30}
+      max-queue-size: ${OTEL_BATCH_MAX_QUEUE_SIZE:2048}
+
+    # Memory Configuration
+    memory:
+      exporter:
+        enabled: ${OTEL_MEMORY_EXPORTER_ENABLED:false}
+
+  # Sampler Configuration
+  sampler:
+    parent-based: ${OTEL_SAMPLER_PARENT_BASED:true}
+    ratio: ${TRACING_SAMPLING_PROBABILITY:0.1}
+
+  # Propagator Configuration
+  propagators:
+    - tracecontext
+    - baggage
+    - b3
+    - b3multi
+    - jaeger
+    - xray
+
+  # Instrumentation Configuration
+  instrumentation:
+    # HTTP Instrumentation
+    http:
+      client:
+        enabled: ${OTEL_HTTP_CLIENT_ENABLED:true}
+        capture-request-headers: ${OTEL_CAPTURE_HTTP_REQUEST_HEADERS:false}
+        capture-response-headers: ${OTEL_CAPTURE_HTTP_RESPONSE_HEADERS:false}
+
+    # Database Instrumentation
+    datasource:
+      enabled: ${OTEL_DATASOURCE_ENABLED:true}
+      capture-statement-text: ${OTEL_CAPTURE_STATEMENT_TEXT:false}
+
+    # Redis Instrumentation
+    redis:
+      enabled: ${OTEL_REDIS_ENABLED:true}
+
+    # Kafka Instrumentation
+    kafka:
+      enabled: ${OTEL_KAFKA_ENABLED:true}
+      capture-experimental-span-attributes: ${OTEL_KAFKA_CAPTURE_EXPERIMENTAL:true}
+
+    # MongoDB Instrumentation
+    mongodb:
+      enabled: ${OTEL_MONGODB_ENABLED:true}
+
+    # Spring Boot Instrumentation
+    spring-boot:
+      enabled: ${OTEL_SPRING_BOOT_ENABLED:true}
+
+# Jaeger Configuration (alternative to Zipkin)
+jaeger:
+  enabled: ${JAEGER_ENABLED:false}
+
+  # Service Configuration
+  service-name: ${spring.application.name}
+  reporter:
+    # HTTP Reporter
+    http:
+      endpoint: ${JAEGER_HTTP_ENDPOINT:http://localhost:14268/api/traces}
+      timeout: ${JAEGER_HTTP_TIMEOUT:5}
+
+    # UDP Reporter
+    udp:
+      host: ${JAEGER_UDP_HOST:localhost}
+      port: ${JAEGER_UDP_PORT:6831}
+
+    # gRPC Reporter
+    grpc:
+      host: ${JAEGER_GRPC_HOST:localhost}
+      port: ${JAEGER_GRPC_PORT:14250}
+
+  # Sampler Configuration
+  sampler:
+    type: ${JAEGER_SAMPLER_TYPE:probabilistic}
+    param: ${TRACING_SAMPLING_PROBABILITY:0.1}
+
+  # Propagation Configuration
+  propagation:
+    jaeger:
+      enabled: ${JAEGER_PROPAGATION_ENABLED:true}
+    b3:
+      enabled: ${JAEGER_B3_PROPAGATION_ENABLED:true}
+
+  # Tags Configuration
+  tags:
+    environment: ${ENVIRONMENT:development}
+    version: ${SERVICE_VERSION:1.0.0}
+    zone: ${EUREKA_ZONE:primary}
+
+# Custom Span Configuration
+custom:
+  spans:
+    # Business Span Configuration
+    business:
+      user-registration:
+        name: user-registration
+        tags:
+          - user-type
+          - registration-source
+          - marketing-channel
+
+      property-listing:
+        name: property-listing
+        tags:
+          - property-type
+          - location
+          - price-range
+
+      booking-creation:
+        name: booking-creation
+        tags:
+          - property-id
+          - booking-type
+          - payment-method
+
+      payment-processing:
+        name: payment-processing
+        tags:
+          - payment-provider
+          - payment-type
+          - amount-range
+
+    # System Span Configuration
+    system:
+      database-query:
+        name: database-query
+        tags:
+          - database-type
+          - table-name
+          - query-type
+
+      cache-operation:
+        name: cache-operation
+        tags:
+          - cache-provider
+          - operation-type
+          - cache-key
+
+      message-processing:
+        name: message-processing
+        tags:
+          - message-type
+          - source-service
+          - destination-service
+
+      external-api-call:
+        name: external-api-call
+        tags:
+          - api-provider
+          - endpoint-type
+          - http-method
+
+# Trace Context Propagation
+propagation:
+  # HTTP Headers
+  http:
+    enabled: ${TRACE_PROPAGATION_HTTP_ENABLED:true}
+    headers:
+      - X-Trace-Id
+      - X-Span-Id
+      - X-Parent-Span-Id
+      - X-B3-TraceId
+      - X-B3-SpanId
+      - X-B3-ParentSpanId
+      - X-B3-Sampled
+      - uber-trace-id
+
+  # Message Headers
+  messaging:
+    enabled: ${TRACE_PROPAGATION_MESSAGING_ENABLED:true}
+    headers:
+      - X-Trace-Id
+      - X-Span-Id
+      - X-Parent-Span-Id
+      - uber-trace-id
+
+# Environment-specific Tracing Configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+spring:
+  sleuth:
+    sampler:
+      probability: 1.0  # Full sampling in development
+
+otel:
+  resource:
+    attributes:
+      deployment.environment: development
+
+jaeger:
+  enabled: true
+  reporter:
+    http:
+      endpoint: http://localhost:14268/api/traces
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+spring:
+  sleuth:
+    sampler:
+      probability: 0.5  # 50% sampling in staging
+
+otel:
+  resource:
+    attributes:
+      deployment.environment: staging
+
+jaeger:
+  enabled: true
+  sampler:
+    param: 0.5
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+spring:
+  sleuth:
+    sampler:
+      probability: 0.1  # 10% sampling in production
+
+otel:
+  resource:
+    attributes:
+      deployment.environment: production
+
+jaeger:
+  enabled: true
+  sampler:
+    param: 0.1
+
+# Performance Optimization
+performance:
+  tracing:
+    # Span Limits
+    span-limits:
+      max-span-size: ${TRACING_MAX_SPAN_SIZE:1000}
+      max-span-message-size: ${TRACING_MAX_SPAN_MESSAGE_SIZE:10000}
+
+    # Queue Configuration
+    queue:
+      size: ${TRACING_QUEUE_SIZE:8192}
+      timeout: ${TRACING_QUEUE_TIMEOUT:5}
+
+    # Cache Configuration
+    cache:
+      enabled: ${TRACING_CACHE_ENABLED:true}
+      max-size: ${TRACING_CACHE_MAX_SIZE:1000}
+      ttl: ${TRACING_CACHE_TTL:3600}

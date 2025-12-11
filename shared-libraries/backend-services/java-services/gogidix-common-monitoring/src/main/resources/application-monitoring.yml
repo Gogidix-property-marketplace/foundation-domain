@@ -1,0 +1,62 @@
+# Gogidix Common Monitoring Configuration
+gogidix:
+  monitoring:
+    enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+          step: 1m
+        influx:
+          enabled: false
+          step: 1m
+          db: gogidix_metrics
+        graphite:
+          enabled: false
+          step: 1m
+        statsd:
+          enabled: false
+        jmx:
+          enabled: true
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,threaddump,heapdump
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+      jmx:
+        enabled: true
+      distribution:
+        percentiles-histogram:
+          http.server.requests: true
+        percentiles:
+          http.server.requests: 0.5,0.9,0.95,0.99
+        sla:
+          http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
+    tags:
+      application: ${spring.application.name:gogidix-service}
+      environment: ${spring.profiles.active:default}
+      region: ${AWS_REGION:local}
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.platform.common.monitoring: INFO
+    io.micrometer: DEBUG
+  pattern:
+    level: "%clr(%5p) %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} : %m%n"

@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.gogidix.platform.common.monitoring.config.MonitoringAutoConfiguration

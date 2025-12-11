@@ -1,0 +1,436 @@
+# GOGIDIX FOUNDATION PLATFORM - COMPREHENSIVE MONITORING & OBSERVABILITY
+# Prometheus, Grafana, ELK Stack, and Distributed Tracing Integration
+
+spring:
+  profiles:
+    include: foundation-core, foundation-security, foundation-audit, foundation-monitoring, foundation-cache, foundation-validation, foundation-persistence, foundation-client, foundation-messaging
+
+  # Foundation Monitoring Configuration
+  boot:
+    admin:
+      client:
+        url: ${SPRING_BOOT_ADMIN_URL:http://localhost:8889}
+        username: ${SPRING_BOOT_ADMIN_USERNAME:admin}
+        password: ${SPRING_BOOT_ADMIN_PASSWORD:admin}
+        instance:
+          prefer-ip: true
+          service-host-type: ip-name
+          metadata:
+            tags:
+              environment: ${ENVIRONMENT:development}
+              zone: ${EUREKA_ZONE:primary}
+              version: 1.0.0
+
+# Gogidix Foundation Monitoring Configuration
+gogidix:
+  foundation:
+    monitoring:
+      enabled: true
+      custom-metrics: true
+      business-metrics: true
+      system-metrics: true
+      jvm-metrics: true
+      performance-metrics: true
+
+      # Custom Metrics Configuration
+      metrics:
+        # Business Metrics
+        business:
+          user-registrations:
+            enabled: true
+            description: "Number of new user registrations"
+          property-listings:
+            enabled: true
+            description: "Number of property listings created"
+          booking-completions:
+            enabled: true
+            description: "Number of completed bookings"
+          revenue-generation:
+            enabled: true
+            description: "Total revenue generated"
+
+        # Performance Metrics
+        performance:
+          response-times:
+            enabled: true
+            percentiles: [0.5, 0.9, 0.95, 0.99]
+            description: "API response time percentiles"
+          throughput:
+            enabled: true
+            description: "Requests per second"
+          error-rates:
+            enabled: true
+            description: "Error rate by endpoint and status code"
+
+        # System Metrics
+        system:
+          cpu:
+            enabled: true
+            description: "CPU usage percentage"
+          memory:
+            enabled: true
+            description: "Memory usage and allocation"
+          disk:
+            enabled: true
+            description: "Disk space usage"
+          network:
+            enabled: true
+            description: "Network I/O and traffic"
+
+        # Database Metrics
+        database:
+          connection-pool:
+            enabled: true
+            description: "Database connection pool metrics"
+          query-performance:
+            enabled: true
+            description: "Query execution times and counts"
+          transaction-metrics:
+            enabled: true
+            description: "Transaction success/failure rates"
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        # Core Actuator Endpoints
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+          - loggers
+          - configprops
+          - env
+          - mappings
+          - threaddump
+          - heapdump
+          - flyway
+          - liquibase
+          # Custom Business Endpoints
+          - businessmetrics
+          - performancemetrics
+          - systemmetrics
+        exclude: []
+      base-path: /actuator
+      cors:
+        allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080}
+        allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+
+  endpoint:
+    health:
+      enabled: true
+      show-details: when-authorized
+      show-components: always
+      group:
+        readiness:
+          include: readiness,db,redis,kafka
+          show-details: always
+        liveness:
+          include: liveness
+          show-details: always
+        custom:
+          include: healthcheck,database,external-services
+          show-details: always
+
+    metrics:
+      enabled: true
+      export:
+        prometheus:
+          enabled: true
+        jmx:
+          enabled: true
+
+    prometheus:
+      enabled: true
+      role: READ_ONLY
+
+    info:
+      enabled: true
+      show:
+        env: true
+        build: true
+        git: true
+        java: true
+
+    loggers:
+      enabled: true
+      writable: true
+
+    configprops:
+      enabled: true
+      show-values: when-authorized
+
+    env:
+      enabled: true
+      show-values: when-authorized
+
+  # Metrics Configuration
+  metrics:
+    # Global Metrics Settings
+    export:
+      # Prometheus Exporter
+      prometheus:
+        enabled: true
+        step: 30s
+        descriptions: true
+
+      # JMX Exporter
+      jmx:
+        enabled: true
+        config:
+          rules:
+            - pattern: '.*'
+              name: 'jvm_$1'
+
+      # StatsD Exporter (for Datadog/New Relic)
+      statsd:
+        enabled: false
+        host: ${STATSD_HOST:localhost}
+        port: ${STATSD_PORT:8125}
+        flavor: etsy
+
+    # Distribution Metrics
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        spring.data.repository.invocations: true
+        cache.gets: true
+        cache.puts: true
+        hikaricp.connections: true
+        kafka.consumer.records: true
+        database.connections: true
+
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+        spring.data.repository.invocations: 0.5, 0.9, 0.95, 0.99
+        cache.gets: 0.5, 0.9, 0.95, 0.99
+        cache.puts: 0.5, 0.9, 0.95, 0.99
+        hikaricp.connections: 0.5, 0.9, 0.95, 0.99
+        kafka.consumer.records: 0.5, 0.9, 0.95, 0.99
+
+      # Service Level Objectives (SLOs)
+      slo:
+        http.server.requests:
+          - name: api_response_time
+            threshold: 500ms
+            objective: 0.95  # 95th percentile under 500ms
+          - name: api_error_rate
+            threshold: 0.01   # 1% error rate maximum
+
+    # Tags for Metrics
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
+      domain: ${SERVICE_DOMAIN:foundation}
+      environment: ${ENVIRONMENT:development}
+      zone: ${EUREKA_ZONE:primary}
+      version: ${SERVICE_VERSION:1.0.0}
+      instance: ${HOSTNAME:localhost}
+      team: ${SERVICE_TEAM:platform}
+
+    # Metrics Auto-Configuration
+    binders:
+      jvm:
+        enabled: true
+      system:
+        enabled: true
+      processor:
+        enabled: true
+      memory:
+        enabled: true
+      disk:
+        enabled: true
+      uptime:
+        enabled: true
+      logging:
+        enabled: true
+      tomcat:
+        enabled: true
+      cache:
+        enabled: true
+      hikaricp:
+        enabled: true
+      http:
+        enabled: true
+      kafka:
+        enabled: true
+      redis:
+        enabled: true
+      jpa:
+        enabled: true
+      grpc:
+        enabled: false
+
+  # Distributed Tracing Configuration
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}  # 10% sampling in production
+
+    # Zipkin Configuration
+    zipkin:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+      enabled: ${ZIPKIN_ENABLED:true}
+
+    # Wavefront Configuration (for comprehensive observability)
+    wavefront:
+      application-name: ${spring.application.name}
+      service-name: ${spring.application.name}
+      source: ${HOSTNAME:localhost}
+      enabled: ${WAVEFRONT_ENABLED:false}
+
+# Prometheus Scrape Configuration
+prometheus:
+  scrape:
+    configs:
+      - job_name: 'gogidix-services'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets:
+              - 'localhost:8081'  # authentication-service
+              - 'localhost:8082'  # user-management-service
+              - 'localhost:8083'  # property-management-service
+              - 'localhost:8084'  # billing-invoicing-service
+              - 'localhost:8086'  # booking-service
+              - 'localhost:8087'  # notification-service
+              - 'localhost:8088'  # reporting-service
+              - 'localhost:8761'  # eureka-server
+              - 'localhost:8888'  # config-server
+              - 'localhost:8000'  # api-gateway
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        honor_labels: true
+
+      - job_name: 'gogidix-infrastructure'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets:
+              - 'localhost:9090'  # Prometheus server
+              - 'localhost:3000'  # Grafana
+              - 'localhost:9200'  # Elasticsearch
+              - 'localhost:5601'  # Kibana
+              - 'localhost:6379'  # Redis
+              - 'localhost:9092'  # Kafka
+        scrape_interval: 60s
+        scrape_timeout: 15s
+
+# Custom Business Metrics
+business:
+  metrics:
+    # User Management Metrics
+    users:
+      registration-count:
+        enabled: true
+        description: "Total number of user registrations"
+      active-users:
+        enabled: true
+        description: "Number of active users"
+      user-retention:
+        enabled: true
+        description: "User retention rate"
+
+    # Property Management Metrics
+    properties:
+      total-listings:
+        enabled: true
+        description: "Total number of property listings"
+      listing-views:
+        enabled: true
+        description: "Property listing view counts"
+      conversion-rate:
+        enabled: true
+        description: "Listing to booking conversion rate"
+
+    # Booking Management Metrics
+    bookings:
+      total-bookings:
+        enabled: true
+        description: "Total number of bookings"
+      booking-success-rate:
+        enabled: true
+        description: "Successful booking completion rate"
+      average-booking-value:
+        enabled: true
+        description: "Average booking value"
+
+    # Financial Metrics
+    financial:
+      total-revenue:
+        enabled: true
+        description: "Total revenue generated"
+      payment-success-rate:
+        enabled: true
+        description: "Payment processing success rate"
+      average-transaction-value:
+        enabled: true
+        description: "Average transaction value"
+
+# Environment-specific Monitoring Configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+gogidix:
+  foundation:
+    monitoring:
+      custom-metrics: true
+      business-metrics: true
+      system-metrics: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0  # Full sampling in development
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+gogidix:
+  foundation:
+    monitoring:
+      custom-metrics: true
+      business-metrics: true
+      system-metrics: true
+
+management:
+  tracing:
+    sampling:
+      probability: 0.5  # 50% sampling in staging
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+gogidix:
+  foundation:
+    monitoring:
+      custom-metrics: true
+      business-metrics: true
+      system-metrics: false  # Disable system metrics for performance
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+  tracing:
+    sampling:
+      probability: 0.1  # 10% sampling in production

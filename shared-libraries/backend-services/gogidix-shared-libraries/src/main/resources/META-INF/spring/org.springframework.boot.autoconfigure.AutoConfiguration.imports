@@ -1,0 +1,9 @@
+com.gogidix.platform.common.security.config.SecurityAutoConfiguration
+com.gogidix.platform.common.security.config.KeycloakAutoConfiguration
+com.gogidix.platform.common.audit.config.AuditAutoConfiguration
+com.gogidix.platform.common.monitoring.config.MonitoringAutoConfiguration
+com.gogidix.platform.common.cache.config.CacheAutoConfiguration
+com.gogidix.platform.common.validation.config.ValidationAutoConfiguration
+com.gogidix.platform.common.persistence.config.PersistenceAutoConfiguration
+com.gogidix.platform.common.client.config.ClientAutoConfiguration
+com.gogidix.platform.common.messaging.config.MessagingAutoConfiguration

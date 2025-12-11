@@ -1,0 +1,84 @@
+# Gogidix Common Cache Configuration
+gogidix:
+  cache:
+    enabled: true
+    type: caffeine  # Options: redis, caffeine, composite, none
+    defaultTtl: 3600  # Default TTL in seconds (1 hour)
+    cacheNullValues: false
+    keyPrefix: "gogidix:cache:"
+
+    # Redis Configuration
+    redis:
+      namespace: "gogidix"
+      keySeparator: ":"
+      cacheNullTtl: 60
+      useAsSecondary: false
+      expirationPolicy: WRITE  # Options: WRITE, ACCESS, NONE
+
+    # Caffeine Configuration (Local Cache)
+    caffeine:
+      maximumSize: 10000
+      expireAfterWrite: 0  # Disable expiration by write
+      expireAfterAccess: 3600  # Expire after 1 hour of access
+      refreshAfterWrite: 0  # Disable refresh
+      initialCapacity: 100
+      weakKeys: false
+      weakValues: false
+      softValues: false
+      recordStats: true
+
+    # Per-Cache Configuration
+    caches:
+      user-cache:
+        name: "user-cache"
+        type: caffeine
+        ttl: 1800  # 30 minutes
+        maxSize: 5000
+        cacheNull: false
+        keyPrefix: "user:"
+
+      property-cache:
+        name: "property-cache"
+        type: redis
+        ttl: 7200  # 2 hours
+        cacheNull: true
+        keyPrefix: "property:"
+
+      session-cache:
+        name: "session-cache"
+        type: redis
+        ttl: 900  # 15 minutes
+        cacheNull: false
+        keyPrefix: "session:"
+
+# Spring Boot Cache Configuration
+spring:
+  cache:
+    type: caffeine  # Let Gogidix manage cache types
+    cache-names:
+      - user-cache
+      - property-cache
+      - session-cache
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=1h,recordStats
+
+# Redis Configuration (if using Redis)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Logging Configuration
+logging:
+  level:
+    com.gogidix.platform.common.cache: INFO
+    org.springframework.cache: DEBUG

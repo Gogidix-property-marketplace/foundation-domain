@@ -1,0 +1,400 @@
+# ✨ GOGIDIX PLATFORM - DOCKER COMPOSE CONFIGURATION ✨
+# Complete local development environment
+# Includes all microservices, databases, and infrastructure
+
+version: '3.8'
+
+services:
+  # =====================================================
+  # INFRASTRUCTURE SERVICES
+  # =====================================================
+
+  # PostgreSQL Databases
+  postgres-billing:
+    image: postgres:15-alpine
+    container_name: gogidix-postgres-billing
+    environment:
+      POSTGRES_DB: billing_invoicing
+      POSTGRES_USER: billing_user
+      POSTGRES_PASSWORD: ${BILLING_DB_PASSWORD:-billing_pass_2024}
+      POSTGRES_SCHEMA: billing
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_billing_data:/var/lib/postgresql/data
+      - ./init-scripts/billing.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billing_user -d billing_invoicing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: gogidix-postgres-user
+    environment:
+      POSTGRES_DB: user_management
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-user_pass_2024}
+      POSTGRES_SCHEMA: users
+    ports:
+      - "5431:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user -d user_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-property:
+    image: postgres:15-alpine
+    container_name: gogidix-postgres-property
+    environment:
+      POSTGRES_DB: property_management
+      POSTGRES_USER: property_user
+      POSTGRES_PASSWORD: ${PROPERTY_DB_PASSWORD:-property_pass_2024}
+      POSTGRES_SCHEMA: properties
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_property_data:/var/lib/postgresql/data
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U property_user -d property_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: gogidix-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_pass_2024}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka Message Queue
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: gogidix-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - gogidix-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: gogidix-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Elasticsearch for Search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: gogidix-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # =====================================================
+  # GOGIDIX SERVICES
+  # =====================================================
+
+  # Config Server
+  config-server:
+    build:
+      context: ../../../foundation-domain/central-configuration/backend-services/java-services/config-server
+      dockerfile: Dockerfile
+    container_name: gogidix-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      ENCRYPT_KEY: ${CONFIG_ENCRYPT_KEY:-gogidix-secret-key-2024}
+    volumes:
+      - ../../../foundation-domain/central-configuration/backend-services/java-services/platform-application-commons:/config
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Service Registry (Eureka)
+  service-registry:
+    build:
+      context: ../../../foundation-domain/shared-libraries/backend-services/gogidix-common-registry
+      dockerfile: Dockerfile
+    container_name: gogidix-service-registry
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config-server
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../../../foundation-domain/shared-libraries/backend-services/gogidix-gateway
+      dockerfile: Dockerfile
+    container_name: gogidix-api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - config-server
+      - service-registry
+      - redis
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_pass_2024}
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Billing Invoicing Service
+  billing-invoicing-service:
+    build:
+      context: ../../../management-domain/java-services/billing-invoicing-service
+      dockerfile: Dockerfile
+    container_name: gogidix-billing-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - config-server
+      - service-registry
+      - postgres-billing
+      - redis
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka
+      BILLING_DB_URL: jdbc:postgresql://postgres-billing:5432/billing_invoicing
+      BILLING_DB_USERNAME: billing_user
+      BILLING_DB_PASSWORD: ${BILLING_DB_PASSWORD:-billing_pass_2024}
+      BILLING_DB_SCHEMA: billing
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_pass_2024}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Management Service
+  user-management-service:
+    build:
+      context: ../../../management-domain/java-services/user-management-service
+      dockerfile: Dockerfile
+    container_name: gogidix-user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - config-server
+      - service-registry
+      - postgres-user
+      - redis
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka
+      USER_DB_URL: jdbc:postgresql://postgres-user:5432/user_management
+      USER_DB_USERNAME: user_user
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD:-user_pass_2024}
+      USER_DB_SCHEMA: users
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_pass_2024}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Property Management Service
+  property-management-service:
+    build:
+      context: ../../../business-domain/property-management/backend-services/java-services/property-management-service
+      dockerfile: Dockerfile
+    container_name: gogidix-property-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - config-server
+      - service-registry
+      - postgres-property
+      - redis
+      - kafka
+      - elasticsearch
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka
+      PROPERTY_DB_URL: jdbc:postgresql://postgres-property:5432/property_management
+      PROPERTY_DB_USERNAME: property_user
+      PROPERTY_DB_PASSWORD: ${PROPERTY_DB_PASSWORD:-property_pass_2024}
+      PROPERTY_DB_SCHEMA: properties
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_pass_2024}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+    networks:
+      - gogidix-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =====================================================
+  # MONITORING INFRASTRUCTURE
+  # =====================================================
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: gogidix-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - gogidix-network
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: gogidix-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - gogidix-network
+
+  # Jaeger Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.48
+    container_name: gogidix-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: 9411
+    networks:
+      - gogidix-network
+
+  # =====================================================
+  # VOLUMES
+  # =====================================================
+volumes:
+  postgres_billing_data:
+  postgres_user_data:
+  postgres_property_data:
+  redis_data:
+  kafka_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:
+
+  # =====================================================
+  # NETWORKS
+  # =====================================================
+networks:
+  gogidix-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

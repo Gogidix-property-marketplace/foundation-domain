@@ -1,0 +1,617 @@
+# GOGIDIX AI SERVICES GATEWAY CONFIGURATION
+# 48+ AI Services Integration with Foundation Platform
+
+spring:
+  profiles:
+    include: foundation-core, foundation-security, foundation-audit, foundation-monitoring, foundation-cache, foundation-validation, foundation-persistence, foundation-client, foundation-messaging
+
+  application:
+    name: gogidix-ai-gateway
+
+  # Spring Cloud Gateway Configuration for AI Services
+  cloud:
+    gateway:
+      # Global CORS Configuration for AI Services
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+              - "http://localhost:8080"
+              - "https://gogidix.com"
+              - "https://*.gogidix.com"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      # AI Services Routes - Category 1: Property Management Automation (9 services)
+      routes:
+        # AI Property Listing & Marketing Services (6)
+        - id: ai-property-description-service
+          uri: http://localhost:9101
+          predicates:
+            - Path=/api/v1/ai/property/description/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: ai-property-description-service
+                fallbackUri: forward:/fallback/ai
+
+        - id: ai-photo-enhancement-service
+          uri: http://localhost:9102
+          predicates:
+            - Path=/api/v1/ai/property/photo/enhance/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-virtual-staging-service
+          uri: http://localhost:9103
+          predicates:
+            - Path=/api/v1/ai/property/virtual-staging/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-virtual-tour-service
+          uri: http://localhost:9104
+          predicates:
+            - Path=/api/v1/ai/property/virtual-tour/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-seo-optimization-service
+          uri: http://localhost:9105
+          predicates:
+            - Path=/api/v1/ai/property/seo/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 40
+                redis-rate-limiter.burstCapacity: 80
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-social-media-service
+          uri: http://localhost:9106
+          predicates:
+            - Path=/api/v1/ai/property/social-media/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 35
+                redis-rate-limiter.burstCapacity: 70
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Property Valuation & Analysis Services (3)
+        - id: ai-automated-valuation-service
+          uri: http://localhost:9110
+          predicates:
+            - Path=/api/v1/ai/property/valuation/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-market-analysis-service
+          uri: http://localhost:9111
+          predicates:
+            - Path=/api/v1/ai/property/market-analysis/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-investment-analysis-service
+          uri: http://localhost:9112
+          predicates:
+            - Path=/api/v1/ai/property/investment/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Smart Search & Recommendations Services (5)
+        - id: ai-property-matching-service
+          uri: http://localhost:9120
+          predicates:
+            - Path=/api/v1/ai/search/matching/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-natural-language-search-service
+          uri: http://localhost:9121
+          predicates:
+            - Path=/api/v1/ai/search/natural-language/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 80
+                redis-rate-limiter.burstCapacity: 160
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-recommendation-engine-service
+          uri: http://localhost:9122
+          predicates:
+            - Path=/api/v1/ai/recommendations/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 60
+                redis-rate-limiter.burstCapacity: 120
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-budget-optimization-service
+          uri: http://localhost:9123
+          predicates:
+            - Path=/api/v1/ai/search/budget/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 40
+                redis-rate-limiter.burstCapacity: 80
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-amenity-search-service
+          uri: http://localhost:9124
+          predicates:
+            - Path=/api/v1/ai/search/amenities/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Lead Management & Sales Automation Services (6)
+        - id: ai-lead-scoring-service
+          uri: http://localhost:9130
+          predicates:
+            - Path=/api/v1/ai/lead/scoring/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 40
+                redis-rate-limiter.burstCapacity: 80
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-lead-qualification-service
+          uri: http://localhost:9131
+          predicates:
+            - Path=/api/v1/ai/lead/qualification/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 35
+                redis-rate-limiter.burstCapacity: 70
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-followup-automation-service
+          uri: http://localhost:9132
+          predicates:
+            - Path=/api/v1/ai/lead/followup/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-chatbot-assistant-service
+          uri: http://localhost:9133
+          predicates:
+            - Path=/api/v1/ai/lead/chatbot/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-appointment-scheduling-service
+          uri: http://localhost:9134
+          predicates:
+            - Path=/api/v1/ai/lead/appointments/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-document-generation-service
+          uri: http://localhost:9135
+          predicates:
+            - Path=/api/v1/ai/sales/documents/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Market Intelligence & Analytics Services (6)
+        - id: ai-price-trend-analysis-service
+          uri: http://localhost:9140
+          predicates:
+            - Path=/api/v1/ai/market/price-trends/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-supply-demand-analytics-service
+          uri: http://localhost:9141
+          predicates:
+            - Path=/api/v1/ai/market/supply-demand/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-competitor-intelligence-service
+          uri: http://localhost:9142
+          predicates:
+            - Path=/api/v1/ai/market/competitor/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-economic-impact-service
+          uri: http://localhost:9143
+          predicates:
+            - Path=/api/v1/ai/market/economic-impact/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-development-hotspots-service
+          uri: http://localhost:9144
+          predicates:
+            - Path=/api/v1/ai/market/development-hotspots/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-portfolio-optimization-service
+          uri: http://localhost:9145
+          predicates:
+            - Path=/api/v1/ai/investment/portfolio/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Advanced Features Services (6)
+        - id: ai-voice-search-service
+          uri: http://localhost:9150
+          predicates:
+            - Path=/api/v1/ai/voice/search/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-image-recognition-service
+          uri: http://localhost:9151
+          predicates:
+            - Path=/api/v1/ai/image/recognition/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 40
+                redis-rate-limiter.burstCapacity: 80
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-predictive-maintenance-service
+          uri: http://localhost:9152
+          predicates:
+            - Path=/api/v1/ai/smart-home/maintenance/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 25
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-smart-home-integration-service
+          uri: http://localhost:9153
+          predicates:
+            - Path=/api/v1/ai/smart-home/integration/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-blockchain-verification-service
+          uri: http://localhost:9154
+          predicates:
+            - Path=/api/v1/ai/blockchain/verification/**
+          filters:
+            - StripPrefix=4
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-fraud-detection-service
+          uri: http://localhost:9155
+          predicates:
+            - Path=/api/v1/ai/fraud/detection/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@userKeyResolver}"
+
+        # AI Integration Hub Service
+        - id: ai-integration-hub-service
+          uri: http://localhost:9500
+          predicates:
+            - Path=/api/v1/ai/hub/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                key-resolver: "#{@userKeyResolver}"
+
+        - id: ai-integration-service
+          uri: http://localhost:9501
+          predicates:
+            - Path=/api/v1/ai/integration/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 80
+                redis-rate-limiter.burstCapacity: 160
+                key-resolver: "#{@userKeyResolver}"
+
+      # Default Filters for All AI Routes
+      default-filters:
+        - name: Retry
+          args:
+            retries: 2
+            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
+            methods: GET,POST
+            backoff:
+              firstBackoff: 100ms
+              maxBackoff: 1s
+              factor: 2
+        - name: AddResponseHeader
+          args:
+            name: X-AI-Response-Time
+            value: "#{T(System).currentTimeMillis()}"
+        - name: AddRequestHeader
+          args:
+            name: X-AI-Request-ID
+            value: "#{T(java.util.UUID).randomUUID().toString()}"
+        - name: AddRequestHeader
+          args:
+            name: X-AI-Service-Category
+            value: "#{@aiCategoryResolver.resolve(T(org.springframework.web.server.ServerHttpRequest))}"
+        - name: StripPrefix
+          args:
+            parts: 3
+
+# Foundation Platform Security
+gogidix:
+  foundation:
+    security:
+      rbac:
+        enabled: true
+        ai-service-roles:
+          - AI_ANALYST
+          - AI_TRAINER
+          - AI_ADMIN
+          - PLATFORM_ADMIN
+
+    monitoring:
+      enabled: true
+      ai-metrics:
+        enabled: true
+        model-performance: true
+        prediction-accuracy: true
+        processing-time: true
+
+    cache:
+      provider: redis
+      ai-cache-ttl: 3600
+      model-cache-ttl: 7200
+
+# Redis Configuration for AI Services Rate Limiting
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# Circuit Breaker Configuration for AI Services
+resilience4j:
+  circuitbreaker:
+    instances:
+      ai-property-description-service:
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 15s
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+      ai-photo-enhancement-service:
+        failure-rate-threshold: 35
+        wait-duration-in-open-state: 20s
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 8
+        minimum-number-of-calls: 4
+
+# AI Services Configuration
+ai:
+  services:
+    property-management:
+      enabled: true
+      timeout: 30s
+      retry-attempts: 2
+      fallback-enabled: true
+
+    lead-management:
+      enabled: true
+      timeout: 25s
+      retry-attempts: 3
+      fallback-enabled: true
+
+    market-intelligence:
+      enabled: true
+      timeout: 45s
+      retry-attempts: 2
+      fallback-enabled: false
+
+    advanced-features:
+      enabled: true
+      timeout: 60s
+      retry-attempts: 1
+      fallback-enabled: true
+
+  # AI Model Configuration
+  models:
+    property-description:
+      provider: openai
+      model: gpt-4
+      max-tokens: 1000
+
+    image-recognition:
+      provider: tensorflow
+      model: resnet50
+      confidence-threshold: 0.8
+
+    property-valuation:
+      provider: h2o
+      model: xgboost
+      accuracy-threshold: 0.9
+
+# Environment-specific AI Configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+ai:
+  services:
+    debug-mode: true
+    mock-responses: true
+    model-timeout: 10s
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+ai:
+  services:
+    model-validation: true
+    performance-monitoring: true
+    fallback-to-production: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+ai:
+  services:
+    high-availability: true
+    auto-scaling: true
+    disaster-recovery: true
+    model-update-strategy: rolling

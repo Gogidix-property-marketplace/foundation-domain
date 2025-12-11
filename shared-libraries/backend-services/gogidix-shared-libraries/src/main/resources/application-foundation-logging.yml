@@ -1,0 +1,350 @@
+# GOGIDIX FOUNDATION PLATFORM - CENTRALIZED LOGGING CONFIGURATION
+# ELK Stack Integration with Structured Logging
+
+spring:
+  profiles:
+    include: foundation-core, foundation-security, foundation-audit, foundation-monitoring, foundation-cache, foundation-validation, foundation-persistence, foundation-client, foundation-messaging
+
+# Centralized Logging Configuration
+logging:
+  # Log Level Configuration
+  level:
+    # Foundation Platform
+    com.gogidix.platform.common: ${LOG_LEVEL_PLATFORM:INFO}
+    com.gogidix.foundation: ${LOG_LEVEL_FOUNDATION:INFO}
+
+    # Spring Framework
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    org.springframework.boot: ${LOG_LEVEL_SPRING_BOOT:INFO}
+    org.springframework.cloud: ${LOG_LEVEL_SPRING_CLOUD:INFO}
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
+    org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
+
+    # Database & Persistence
+    org.springframework.data: ${LOG_LEVEL_SPRING_DATA:INFO}
+    org.hibernate: ${LOG_LEVEL_HIBERNATE:WARN}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:WARN}
+    org.hibernate.type.descriptor.sql: ${LOG_LEVEL_SQL_TYPE:WARN}
+    com.zaxxer.hikari: ${LOG_LEVEL_HIKARI:INFO}
+
+    # Messaging & Communication
+    org.springframework.kafka: ${LOG_LEVEL_KAFKA:INFO}
+    org.apache.kafka: ${LOG_LEVEL_KAFKA_CLIENT:WARN}
+    org.springframework.amqp: ${LOG_LEVEL_RABBITMQ:INFO}
+
+    # Monitoring & Tracing
+    org.springframework.boot.actuator: ${LOG_LEVEL_ACTUATOR:INFO}
+    io.micrometer: ${LOG_LEVEL_MICROMETER:INFO}
+    brave.tracer: ${LOG_LEVEL_ZIPKIN:INFO}
+
+    # External Services
+    org.keycloak: ${LOG_LEVEL_KEYCLOAK:INFO}
+    com.sendgrid: ${LOG_LEVEL_SENDGRID:WARN}
+    com.twilio: ${LOG_LEVEL_TWILIO:WARN}
+
+    # Third-party Libraries
+    org.apache.http: ${LOG_LEVEL_APACHE_HTTP:WARN}
+    org.elasticsearch: ${LOG_LEVEL_ELASTICSEARCH:WARN}
+    redis.clients: ${LOG_LEVEL_REDIS:INFO}
+    com.mongodb: ${LOG_LEVEL_MONGODB:WARN}
+
+    # Application-specific (can be overridden by services)
+    com.gogidix.management: ${LOG_LEVEL_MANAGEMENT:INFO}
+    com.gogidix.infrastructure: ${LOG_LEVEL_INFRASTRUCTURE:INFO}
+
+    # Development-only debug settings
+    ${LOG_PACKAGE_ROOT}: ${LOG_LEVEL_ROOT:INFO}
+
+  # Log Pattern Configuration
+  pattern:
+    # Console Pattern with structured logging
+    console: |
+      %d{yyyy-MM-dd HH:mm:ss.SSS}
+      [%X{traceId:-},%X{spanId:-},%X{userId:-},%X{sessionId:-}]
+      [%thread]
+      %-5level [%X{service:-},%X{version:-},%X{environment:-}]
+      %logger{36} - %msg%n
+
+    # File Pattern with enhanced correlation
+    file: |
+      %d{yyyy-MM-dd HH:mm:ss.SSS}
+      [%X{traceId:-},%X{spanId:-},%X{correlationId:-},%X{userId:-},%X{sessionId:-},%X{requestId:-}]
+      [%thread]
+      %-5level [%X{service:-},%X{version:-},%X{environment:-},%X{zone:-},%X{instance:-}]
+      %logger{36} - %msg%n
+
+    # JSON Pattern for ELK Stack
+    json: |
+      {
+        "timestamp": "%d{yyyy-MM-dd'T'HH:mm:ss.SSSX}",
+        "level": "%level",
+        "thread": "%thread",
+        "logger": "%logger{36}",
+        "message": "%msg",
+        "exception": "%ex",
+        "traceId": "%X{traceId:-}",
+        "spanId": "%X{spanId:-}",
+        "correlationId": "%X{correlationId:-}",
+        "userId": "%X{userId:-}",
+        "sessionId": "%X{sessionId:-}",
+        "requestId": "%X{requestId:-}",
+        "service": "%X{service:-}",
+        "version": "%X{version:-}",
+        "environment": "%X{environment:-}",
+        "zone": "%X{zone:-}",
+        "instance": "%X{instance:-}",
+        "host": "%X{host:-}",
+        "application": "%spring.application.name"
+      }
+
+  # File Logging Configuration
+  file:
+    name: ${LOG_FILE:logs/${spring.application.name}.log}
+    max-size: ${LOG_FILE_MAX_SIZE:100MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:30}
+    total-size-cap: ${LOG_FILE_TOTAL_SIZE_CAP:1GB}
+    clean-history-on-start: ${LOG_CLEAN_HISTORY_ON_START:true}
+
+  # Logback Appender Configuration
+  logback:
+    # Rolling Policy
+    rollingpolicy:
+      max-file-size: ${LOG_FILE_MAX_SIZE:100MB}
+      max-history: ${LOG_FILE_MAX_HISTORY:30}
+      total-size-cap: ${LOG_FILE_TOTAL_SIZE_CAP:1GB}
+      file-name-pattern: ${LOG_FILE_NAME_PATTERN:logs/${spring.application.name}.%d{yyyy-MM-dd}.%i.log}
+      clean-history-on-start: ${LOG_CLEAN_HISTORY_ON_START:true}
+
+# ELK Stack Configuration
+elk:
+  enabled: ${ELK_ENABLED:true}
+
+  # Logstash Configuration
+  logstash:
+    enabled: ${LOGSTASH_ENABLED:true}
+    host: ${LOGSTASH_HOST:localhost}
+    port: ${LOGSTASH_PORT:5000}
+    protocol: ${LOGSTASH_PROTOCOL:tcp}
+    format: ${LOGSTASH_FORMAT:json}
+    queue-size: ${LOGSTASH_QUEUE_SIZE:8192}
+    connection-timeout: ${LOGSTASH_CONNECTION_TIMEOUT:5000}
+    read-timeout: ${LOGSTASH_READ_TIMEOUT:5000}
+    reconnect-delay: ${LOGSTASH_RECONNECT_DELAY:5000}
+
+  # Elasticsearch Configuration
+  elasticsearch:
+    enabled: ${ELASTICSEARCH_ENABLED:false}
+    host: ${ELASTICSEARCH_HOST:localhost}
+    port: ${ELASTICSEARCH_PORT:9200}
+    username: ${ELASTICSEARCH_USERNAME:elastic}
+    password: ${ELASTICSEARCH_PASSWORD:changeme}
+    index: ${ELASTICSEARCH_INDEX:gogidix-logs}
+    shards: ${ELASTICSEARCH_SHARDS:3}
+    replicas: ${ELASTICSEARCH_REPLICAS:1}
+
+  # Kibana Configuration
+  kibana:
+    enabled: ${KIBANA_ENABLED:false}
+    host: ${KIBANA_HOST:localhost}
+    port: ${KIBANA_PORT:5601}
+    dashboard: ${KIBANA_DASHBOARD:gogidix-logs}
+
+# Structured Logging Configuration
+structured:
+  logging:
+    enabled: ${STRUCTURED_LOGGING_ENABLED:true}
+    format: ${STRUCTURED_LOGGING_FORMAT:json}
+
+    # MDC (Mapped Diagnostic Context) Keys
+    mdc:
+      # Standard Keys
+      trace-id: traceId
+      span-id: spanId
+      correlation-id: correlationId
+      user-id: userId
+      session-id: sessionId
+      request-id: requestId
+
+      # Business Context
+      service: service
+      version: version
+      environment: environment
+      zone: zone
+      instance: instance
+      host: host
+      application: spring.application.name
+
+      # Request Context
+      http-method: httpMethod
+      http-url: httpUrl
+      http-status: httpStatus
+      response-time: responseTime
+
+      # User Context
+      user-email: userEmail
+      user-roles: userRoles
+      user-domain: userDomain
+
+      # Business Context
+      business-domain: businessDomain
+      operation-type: operationType
+      entity-type: entityType
+      entity-id: entityId
+
+# Custom Logging Categories
+categories:
+  # Security and Audit Logs
+  security:
+    level: ${LOG_LEVEL_SECURITY:INFO}
+    file: logs/security-audit.log
+    include-user-context: true
+    include-request-context: true
+
+  # Business Logs
+  business:
+    level: ${LOG_LEVEL_BUSINESS:INFO}
+    file: logs/business-events.log
+    include-business-context: true
+    include-user-context: true
+
+  # Performance Logs
+  performance:
+    level: ${LOG_LEVEL_PERFORMANCE:INFO}
+    file: logs/performance-metrics.log
+    include-performance-context: true
+
+  # Error Logs
+  errors:
+    level: ${LOG_LEVEL_ERRORS:ERROR}
+    file: logs/application-errors.log
+    include-stack-trace: true
+    include-request-context: true
+
+# Exception Handling
+exception:
+  # Stack Trace Configuration
+  stack-trace:
+    enabled: ${EXCEPTION_STACK_TRACE_ENABLED:true}
+    max-depth: ${EXCEPTION_STACK_TRACE_MAX_DEPTH:20}
+    include-causative-chains: ${EXCEPTION_INCLUDE_CAUSATIVE_CHAINS:true}
+
+  # Error Reporting
+  error-reporting:
+    enabled: ${ERROR_REPORTING_ENABLED:true}
+    services: ${ERROR_REPORTING_SERVICES:sentry,slack,email}
+    threshold: ${ERROR_REPORTING_THRESHOLD:ERROR}
+
+# Log Aggregation and Analysis
+aggregation:
+  # Real-time Log Analysis
+  real-time:
+    enabled: ${REAL_TIME_LOG_ANALYSIS:true}
+    anomaly-detection: ${ANOMALY_DETECTION:true}
+    pattern-matching: ${PATTERN_MATCHING:true}
+
+  # Log Retention Policy
+  retention:
+    days: ${LOG_RETENTION_DAYS:30}
+    archive-days: ${LOG_ARCHIVE_DAYS:365}
+    compression: ${LOG_COMPRESSION:true}
+
+  # Log Export
+  export:
+    enabled: ${LOG_EXPORT_ENABLED:true}
+    formats: ${LOG_EXPORT_FORMATS:json,csv}
+    destinations: ${LOG_EXPORT_DESTINATIONS:s3,azure,gcs}
+
+# Environment-specific Logging Configuration
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+logging:
+  level:
+    com.gogidix: DEBUG
+    org.springframework: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.springframework.kafka: DEBUG
+    org.keycloak: DEBUG
+
+elk:
+  enabled: false  # Disable ELK in development for performance
+
+structured:
+  logging:
+    format: console  # Human-readable format in development
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+
+logging:
+  level:
+    com.gogidix: INFO
+    org.springframework: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+
+elk:
+  enabled: true
+  logstash:
+    host: ${STAGING_LOGSTASH_HOST}
+    port: ${STAGING_LOGSTASH_PORT}
+
+structured:
+  logging:
+    format: json
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+logging:
+  level:
+    com.gogidix: WARN
+    org.springframework: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN
+    org.springframework.kafka: WARN
+    org.keycloak: WARN
+
+elk:
+  enabled: true
+  logstash:
+    host: ${PROD_LOGSTASH_HOST}
+    port: ${PROD_LOGSTASH_PORT}
+  elasticsearch:
+    enabled: true
+    host: ${PROD_ELASTICSEARCH_HOST}
+    port: ${PROD_ELASTICSEARCH_PORT}
+    username: ${PROD_ELASTICSEARCH_USERNAME}
+    password: ${PROD_ELASTICSEARCH_PASSWORD}
+
+structured:
+  logging:
+    format: json
+
+categories:
+  security:
+    level: WARN
+  business:
+    level: INFO
+  performance:
+    level: WARN
+  errors:
+    level: ERROR
+
+aggregation:
+  retention:
+    days: 90
+    archive-days: 730

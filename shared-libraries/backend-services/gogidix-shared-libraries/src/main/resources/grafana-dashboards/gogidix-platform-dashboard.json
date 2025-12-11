@@ -1,0 +1,485 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Gogidix Platform - Foundation Dashboard",
+    "tags": ["gogidix", "foundation", "platform"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Platform Overview",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(up{job=\"gogidix-services\"})",
+            "legendFormat": "Active Services"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Total RPS"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{job=\"gogidix-services\",status=~\"4..\"}[5m]))",
+            "legendFormat": "Error Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "red",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "options": {
+          "showLabels": true,
+          "showValues": true,
+          "colorMode": "value"
+        }
+      },
+      {
+        "title": "Service Health Status",
+        "type": "table",
+        "gridPos": {
+          "x": 0,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"gogidix-services\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              },
+              "indexByName": {},
+              "renameByName": {
+                "Value": "Status",
+                "instance": "Service"
+              }
+            }
+          }
+        ],
+        "styles": [
+          {
+            "color": {
+              "mode": "thresholds"
+            },
+            "date": false,
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "color": "red",
+                    "index": 0,
+                    "text": "DOWN"
+                  },
+                  "1": {
+                    "color": "green",
+                    "index": 1,
+                    "text": "UP"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "title": "Request Rate by Service",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 8,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"gogidix-services\"}[5m])) by (service)",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests per Second"
+          }
+        ]
+      },
+      {
+        "title": "Response Time Percentiles",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 16,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"gogidix-services\"}[5m])) by (le, service))",
+            "legendFormat": "95th percentile - {{service}}"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"gogidix-services\"}[5m])) by (le, service))",
+            "legendFormat": "50th percentile - {{service}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Response Time (seconds)"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate by Service",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 16,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"gogidix-services\",status=~\"4..\"}[5m])) by (service) / sum(rate(http_requests_total{job=\"gogidix-services\"}[5m])) by (service) * 100",
+            "legendFormat": "Error Rate - {{service}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error Rate (%)",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "title": "JVM Memory Usage",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 24,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(jvm_memory_used_bytes{job=\"gogidix-services\", area=\"heap\"}) by (instance) / sum(jvm_memory_max_bytes{job=\"gogidix-services\", area=\"heap\"}) by (instance) * 100",
+            "legendFormat": "Heap Usage - {{instance}}"
+          },
+          {
+            "expr": "sum(jvm_memory_used_bytes{job=\"gogidix-services\", area=\"nonheap\"}) by (instance) / sum(jvm_memory_max_bytes{job=\"gogidix-services\", area=\"nonheap\"}) by (instance) * 100",
+            "legendFormat": "Non-Heap Usage - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory Usage (%)",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "title": "Database Connection Pool Usage",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 24,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=\"gogidix-services\"}",
+            "legendFormat": "Active Connections - {{instance}}"
+          },
+          {
+            "expr": "hikaricp_connections_idle{job=\"gogidix-services\"}",
+            "legendFormat": "Idle Connections - {{instance}}"
+          },
+          {
+            "expr": "hikaricp_connections_pending{job=\"gogidix-services\"}",
+            "legendFormat": "Pending Connections - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Connections"
+          }
+        ]
+      },
+      {
+        "title": "Business Metrics - User Activity",
+        "type": "stat",
+        "gridPos": {
+          "x": 0,
+          "y": 32,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(gogidix_business_user_registrations_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Registrations/min"
+          },
+          {
+            "expr": "gogidix_business_active_users_total{job=\"gogidix-services\"}",
+            "legendFormat": "Active Users"
+          }
+        ]
+      },
+      {
+        "title": "Business Metrics - Property Activity",
+        "type": "stat",
+        "gridPos": {
+          "x": 8,
+          "y": 32,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(gogidix_business_property_listings_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Listings/min"
+          },
+          {
+            "expr": "sum(rate(gogidix_business_property_views_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Views/min"
+          }
+        ]
+      },
+      {
+        "title": "Business Metrics - Booking Activity",
+        "type": "stat",
+        "gridPos": {
+          "x": 16,
+          "y": 32,
+          "w": 8,
+          "h": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(gogidix_business_bookings_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Bookings/min"
+          },
+          {
+            "expr": "gogidix_business_booking_success_rate{job=\"gogidix-services\"} * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ]
+      },
+      {
+        "title": "Financial Metrics",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 38,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(gogidix_financial_total_revenue_total{job=\"gogidix-services\"}[1h]))",
+            "legendFormat": "Revenue (hourly)"
+          },
+          {
+            "expr": "sum(rate(gogidix_financial_payment_success_total{job=\"gogidix-services\"}[5m]))",
+            "legendFormat": "Successful Payments/min"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Amount"
+          }
+        ]
+      },
+      {
+        "title": "Kafka Message Throughput",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 38,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(kafka_consumer_records_consumed_total{job=\"gogidix-services\"}[5m])) by (instance)",
+            "legendFormat": "Messages/sec - {{instance}}"
+          },
+          {
+            "expr": "sum(rate(kafka_producer_record_send_total{job=\"gogidix-services\"}[5m])) by (instance)",
+            "legendFormat": "Produced/sec - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Messages per Second"
+          }
+        ]
+      },
+      {
+        "title": "Cache Performance",
+        "type": "graph",
+        "gridPos": {
+          "x": 0,
+          "y": 46,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(cache_gets_total{job=\"gogidix-services\",result=\"hit\"}[5m])) by (instance) / sum(rate(cache_gets_total{job=\"gogidix-services\"}[5m])) by (instance) * 100",
+            "legendFormat": "Hit Rate - {{instance}}"
+          },
+          {
+            "expr": "sum(rate(cache_puts_total{job=\"gogidix-services\"}[5m])) by (instance)",
+            "legendFormat": "Puts/sec - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Cache Hit Rate (%)"
+          }
+        ]
+      },
+      {
+        "title": "System Resource Usage",
+        "type": "graph",
+        "gridPos": {
+          "x": 12,
+          "y": 46,
+          "w": 12,
+          "h": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(process_cpu_seconds_total{job=\"gogidix-services\"}[5m])) by (instance) * 100",
+            "legendFormat": "CPU % - {{instance}}"
+          },
+          {
+            "expr": "sum(rate(process_network_bytes_total{job=\"gogidix-services\"}[5m])) by (instance)",
+            "legendFormat": "Network I/O - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Resource Usage"
+          }
+        ]
+      }
+    ],
+    "refresh": "10s",
+    "schemaVersion": 17,
+    "style": "dark",
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "hide": 0,
+          "includeAll": true,
+          "label": "Service",
+          "multi": true,
+          "name": "service",
+          "options": [],
+          "query": "label_values(up{job=\"gogidix-services\"}, service)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "type": "query"
+        },
+        {
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "hide": 0,
+          "includeAll": true,
+          "label": "Environment",
+          "multi": true,
+          "name": "environment",
+          "options": [],
+          "query": "label_values(up{job=\"gogidix-services\"}, environment)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ]
+    },
+    "timezone": "",
+    "title": "Gogidix Platform - Foundation Dashboard",
+    "uid": "gogidix-foundation-platform",
+    "version": 1
+  }
+}

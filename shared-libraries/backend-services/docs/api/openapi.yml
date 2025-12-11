@@ -1,0 +1,1220 @@
+# ✨ GOGIDIX PLATFORM - API DOCUMENTATION ✨
+# OpenAPI 3.0 Specification for All Platform APIs
+# Version: 1.0.0
+# Last Updated: 2025-11-29
+
+openapi: 3.0.3
+info:
+  title: Gogidix Platform APIs
+  description: |
+    ## Overview
+
+    The Gogidix Platform provides comprehensive RESTful APIs for the property marketplace.
+
+    ## Authentication
+
+    All API requests must include an JWT token in the Authorization header:
+
+    ```
+    Authorization: Bearer <jwt-token>
+    ```
+
+    ## Rate Limiting
+
+    - **Default**: 100 requests per minute
+    - **Premium Users**: 1000 requests per minute
+    - **Enterprise**: 5000 requests per minute
+
+    ## Base URLs
+
+    - **Production**: https://api.gogidix.com
+    - **Staging**: https://staging-api.gogidix.com
+    - **Development**: http://localhost:8080
+  version: 1.0.0
+  contact:
+    name: Gogidix Platform Team
+    email: api-support@gogidix.com
+    url: https://gogidix.com
+  license:
+    name: Enterprise License
+    url: https://gogidix.com/license
+
+servers:
+  - url: https://api.gogidix.com
+    description: Production server
+  - url: https://staging-api.gogidix.com
+    description: Staging server
+  - url: http://localhost:8080
+    description: Development server
+
+# =====================================================
+# SECURITY SCHEMES
+# =====================================================
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # =====================================================
+  # REUSABLE COMPONENTS
+  # =====================================================
+  schemas:
+    # Standard API Response
+    ApiResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          description: Unique request identifier for tracing
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp
+        status:
+          $ref: '#/components/schemas/ResponseStatus'
+        code:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Human-readable message
+        data:
+          type: object
+          description: Response payload
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiError'
+        metadata:
+          type: object
+          additionalProperties: true
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ResponseStatus:
+      type: string
+      enum:
+        - SUCCESS
+        - ERROR
+        - PARTIAL
+
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        field:
+          type: string
+          description: Field with error (for validation errors)
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        first:
+          type: boolean
+        last:
+          type: boolean
+
+    # =====================================================
+    # USER MANAGEMENT SCHEMAS
+    # =====================================================
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          example: user@gogidix.com
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: Doe
+        phone:
+          type: string
+          example: +1234567890
+        avatar:
+          type: string
+          format: uri
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UserRequest:
+      type: object
+      required:
+        - email
+        - firstName
+        - lastName
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          type: string
+          enum:
+            - USER
+            - AGENT
+            - ADMIN
+          default: USER
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        phone:
+          type: string
+        avatar:
+          type: string
+          format: uri
+
+    UserRole:
+      type: string
+      enum:
+        - USER
+        - AGENT
+        - PROPERTY_MANAGER
+        - ADMIN
+        - SYSTEM_ADMIN
+        - SUPER_ADMIN
+
+    UserStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - SUSPENDED
+        - PENDING_VERIFICATION
+
+    # =====================================================
+    # PROPERTY MANAGEMENT SCHEMAS
+    # =====================================================
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          example: Beautiful 3BR Apartment
+        description:
+          type: string
+          example: Spacious apartment in prime location
+        type:
+          $ref: '#/components/schemas/PropertyType'
+        category:
+          $ref: '#/components/schemas/PropertyCategory'
+        price:
+          type: number
+          format: double
+          example: 250000
+        currency:
+          type: string
+          default: USD
+        location:
+          $ref: '#/components/schemas/Location'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyFeature'
+        amenities:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+        status:
+          $ref: '#/components/schemas/PropertyStatus'
+        ownerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PropertyRequest:
+      type: object
+      required:
+        - title
+        - type
+        - price
+        - location
+      properties:
+        title:
+          type: string
+          minLength: 10
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        type:
+          type: string
+          enum:
+            - APARTMENT
+            - HOUSE
+            - VILLA
+            - STUDIO
+            - PENTHOUSE
+            - COMMERCIAL
+        category:
+          type: string
+          enum:
+            - RENT
+            - SALE
+            - SHORT_TERM
+        price:
+          type: number
+          format: double
+          minimum: 0
+        currency:
+          type: string
+          default: USD
+        location:
+          $ref: '#/components/schemas/Location'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyFeature'
+        amenities:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    PropertyType:
+      type: string
+      enum:
+        - APARTMENT
+        - HOUSE
+        - VILLA
+        - STUDIO
+        - PENTHOUSE
+        - COMMERCIAL
+        - LAND
+
+    PropertyCategory:
+      type: string
+      enum:
+        - RENT
+        - SALE
+        - SHORT_TERM
+        - VACATION_RENTAL
+
+    PropertyStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - PENDING
+        - SOLD
+        - RENTED
+
+    PropertyFeature:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - BEDROOMS
+            - BATHROOMS
+            - PARKING
+            - POOL
+            - GARDEN
+            - BALCONY
+            - FURNISHED
+            - PETS_ALLOWED
+        value:
+          oneOf:
+            - type: string
+            - type: integer
+            - type: boolean
+
+    Location:
+      type: object
+      properties:
+        address:
+          type: string
+          example: 123 Main St, New York, NY 10001
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        city:
+          type: string
+          example: New York
+        state:
+          type: string
+          example: New York
+        zipCode:
+          type: string
+          example: 10001
+        country:
+          type: string
+          example: USA
+
+    Image:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        alt:
+          type: string
+
+    # =====================================================
+    # BILLING SCHEMAS
+    # =====================================================
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        invoiceNumber:
+          type: string
+          example: INV-2024-001234
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          example: 1500.00
+        currency:
+          type: string
+          default: USD
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InvoiceRequest:
+      type: object
+      required:
+        - userId
+        - amount
+        - dueDate
+      properties:
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          minimum: 0
+        currency:
+          type: string
+          default: USD
+        dueDate:
+          type: string
+          format: date
+        description:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+
+    InvoiceItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: double
+        amount:
+          type: number
+          format: double
+
+    InvoiceStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PENDING
+        - PAID
+        - OVERDUE
+        - CANCELLED
+        - REFUNDED
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        method:
+          $ref: '#/components/schemas/PaymentMethod'
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        transactionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentMethod:
+      type: string
+      enum:
+        - CREDIT_CARD
+        - DEBIT_CARD
+        - PAYPAL
+        - STRIPE
+        - BANK_TRANSFER
+        - CRYPTO
+
+    PaymentStatus:
+      type: string
+      enum:
+        - PENDING
+        - PROCESSING
+        - COMPLETED
+        - FAILED
+        - REFUNDED
+        - CANCELLED
+
+    # =====================================================
+    # BOOKING SCHEMAS
+    # =====================================================
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        checkIn:
+          type: string
+          format: date-time
+        checkOut:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        totalPrice:
+          type: number
+          format: double
+        currency:
+          type: string
+          default: USD
+        guests:
+          type: integer
+          minimum: 1
+        specialRequests:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BookingRequest:
+      type: object
+      required:
+        - propertyId
+        - checkIn
+        - checkOut
+        - guests
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        checkIn:
+          type: string
+          format: date-time
+        checkOut:
+          type: string
+          format: date-time
+        guests:
+          type: integer
+          minimum: 1
+          maximum: 20
+        specialRequests:
+          type: array
+          items:
+            type: string
+
+    BookingStatus:
+      type: string
+      enum:
+        - PENDING
+        - CONFIRMED
+        - CHECKED_IN
+        - CHECKED_OUT
+        - CANCELLED
+        - NO_SHOW
+
+# =====================================================
+# TAGS
+# =====================================================
+tags:
+  - name: Authentication
+    description: User authentication and authorization endpoints
+  - name: Users
+    description: User management operations
+  - name: Properties
+    description: Property listing and management
+  - name: Bookings
+    description: Booking and reservation management
+  - name: Billing
+    description: Invoicing and payment processing
+  - name: Search
+    description: Property search and filtering
+
+# =====================================================
+# PATHS
+# =====================================================
+paths:
+  # =====================================================
+  # AUTHENTICATION ENDPOINTS
+  # =====================================================
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        accessToken:
+                          type: string
+                        refreshToken:
+                          type: string
+                        user:
+                          $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generate new access token from refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        accessToken:
+                          type: string
+                        refreshToken:
+                          type: string
+
+  # =====================================================
+  # USER ENDPOINTS
+  # =====================================================
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: Retrieve paginated list of users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum:
+              - USER
+              - AGENT
+              - ADMIN
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ACTIVE
+              - INACTIVE
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/User'
+                    pagination:
+                      $ref: '#/components/schemas/PaginationInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Register a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+
+  /api/v1/users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: User updated successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # =====================================================
+  # PROPERTY ENDPOINTS
+  # =====================================================
+  /api/v1/properties:
+    get:
+      tags:
+        - Properties
+      summary: List properties
+      description: Search and filter properties
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/PropertyType'
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/PropertyCategory'
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Properties retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Property'
+                    pagination:
+                      $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags:
+        - Properties
+      summary: Create property listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyRequest'
+      responses:
+        '201':
+          description: Property created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Property'
+
+  /api/v1/properties/{propertyId}:
+    get:
+      tags:
+        - Properties
+      summary: Get property details
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Property retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Property'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # =====================================================
+  # BILLING ENDPOINTS
+  # =====================================================
+  /api/v1/billing/invoices:
+    get:
+      tags:
+        - Billing
+      summary: List invoices
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/InvoiceStatus'
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Invoices retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Invoice'
+                    pagination:
+                      $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags:
+        - Billing
+      summary: Create invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceRequest'
+      responses:
+        '201':
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Invoice'
+
+  /api/v1/billing/invoices/{invoiceId}/payments:
+    post:
+      tags:
+        - Billing
+      summary: Process payment for invoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - method
+              properties:
+                amount:
+                  type: number
+                  format: double
+                method:
+                  $ref: '#/components/schemas/PaymentMethod'
+                token:
+                  type: string
+                  description: Payment token (for card payments)
+      responses:
+        '200':
+          description: Payment processed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/Payment'
+
+# =====================================================
+# COMMON RESPONSES
+# =====================================================
+components:
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 400
+              message: "Validation failed"
+              errors:
+                - code: "INVALID_FIELD"
+                  message: "Invalid email format"
+                  field: "email"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 401
+              message: "Invalid or expired token"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 403
+              message: "Insufficient permissions"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 404
+              message: "Resource not found"
+
+    TooManyRequests:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 429
+              message: "Rate limit exceeded. Try again later"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+            example:
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+              timestamp: "2024-11-29T10:30:00Z"
+              status: ERROR
+              code: 500
+              message: "Internal server error occurred"
