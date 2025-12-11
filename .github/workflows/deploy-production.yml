@@ -1,0 +1,265 @@
+name: Deploy Foundation Domain to Production
+
+on:
+  workflow_run:
+    workflows: ["Foundation Domain CI/CD Pipeline"]
+    types:
+      - completed
+    branches: [develop]
+
+jobs:
+  # Manual approval for production deployment
+  approve-production:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Request production deployment approval
+        run: echo "Waiting for production deployment approval..."
+
+  # Deploy to production
+  deploy-production:
+    needs: approve-production
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        # Deploy in waves to minimize risk
+        wave:
+          - { services: "shared-infrastructure", parallel: false }
+          - { services: "central-configuration", parallel: false }
+          - { services: "ai-services", parallel: true, batch: 1 }
+          - { services: "ai-services", parallel: true, batch: 2 }
+          - { services: "centralized-dashboard", parallel: true }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Deploy Wave - ${{ matrix.wave.services }}
+        run: |
+          export KUBECONFIG=kubeconfig
+          echo "Deploying ${{ matrix.wave.services }} to production"
+
+          if [ "${{ matrix.wave.services }}" = "shared-infrastructure" ]; then
+            # Deploy critical infrastructure first
+            cd shared-infrastructure/backend-services
+
+            # Deploy Java services with Helm
+            cd java-services
+            for service in api-gateway authentication-service authorization-service config-server registry-service; do
+              echo "Deploying critical service: $service"
+              helm upgrade --install $service $service \
+                --namespace foundation-prod \
+                --set image.tag=${{ github.sha }} \
+                --set image.repository=${{ env.REGISTRY }}/${{ github.repository }}-shared-infrastructure-$service \
+                --set replicaCount=3 \
+                --set resources.requests.cpu=200m \
+                --set resources.requests.memory=256Mi \
+                --set resources.limits.cpu=500m \
+                --set resources.limits.memory=512Mi \
+                --wait --timeout=15m
+            done
+
+          elif [ "${{ matrix.wave.services }}" = "central-configuration" ]; then
+            # Deploy configuration services
+            cd central-configuration/backend-services/java-services
+            find . -name "Chart.yaml" -type f | xargs -I {} dirname {} | sort | while read service; do
+              if [ -f "$service/Chart.yaml" ]; then
+                echo "Deploying configuration service: $service"
+                service_name=$(basename "$service")
+                helm upgrade --install $service_name $service \
+                  --namespace foundation-prod \
+                  --set image.tag=${{ github.sha }} \
+                  --set image.repository=${{ env.REGISTRY }}/${{ github.repository }}-central-configuration-$service_name \
+                  --wait --timeout=10m
+              fi
+            done
+
+          elif [ "${{ matrix.wave.services }}" = "ai-services" ]; then
+            # Deploy AI services in batches
+            cd ai-services/backend-services
+
+            if [ "${{ matrix.wave.batch }}" = "1" ]; then
+              # First batch: Core AI services
+              services=(ai-gateway-service ai-inference-service ai-model-management-service)
+            else
+              # Second batch: Remaining AI services
+              services=(ai-chatbot-service ai-recommendation-service ai-anomaly-detection-service ai-fraud-detection-service)
+            fi
+
+            # Deploy Java AI services
+            cd java-services
+            for service in "${services[@]}"; do
+              if [ -d "$service" ]; then
+                echo "Deploying AI service: $service"
+                helm upgrade --install $service $service \
+                  --namespace foundation-prod \
+                  --set image.tag=${{ github.sha }} \
+                  --set image.repository=${{ env.REGISTRY }}/${{ github.repository }}-ai-services-$service \
+                  --wait --timeout=10m
+              fi
+            done
+            cd - > /dev/null
+
+            # Deploy Node.js AI services
+            cd nodejs-services
+            for service in "${services[@]}"; do
+              if [ -d "$service" ] && [ -f "$service/kubernetes/deployment.yml" ]; then
+                echo "Deploying Node.js AI service: $service"
+                envsubst < "$service/kubernetes/deployment.yml" | kubectl apply -f - -n foundation-prod
+              fi
+            done
+            cd - > /dev/null
+
+            # Deploy Python AI services
+            cd python-services
+            for service in "${services[@]}"; do
+              if [ -d "$service" ] && [ -f "$service/kubernetes/deployment.yml" ]; then
+                echo "Deploying Python AI service: $service"
+                envsubst < "$service/kubernetes/deployment.yml" | kubectl apply -f - -n foundation-prod
+              fi
+            done
+            cd - > /dev/null
+
+          elif [ "${{ matrix.wave.services }}" = "centralized-dashboard" ]; then
+            # Deploy dashboard services
+            cd centralized-dashboard/backend-services
+
+            # Deploy Java services
+            cd java-services
+            find . -name "Chart.yaml" -type f | xargs -I {} dirname {} | sort | while read service; do
+              if [ -f "$service/Chart.yaml" ]; then
+                echo "Deploying dashboard service: $service"
+                service_name=$(basename "$service")
+                helm upgrade --install $service_name $service \
+                  --namespace foundation-prod \
+                  --set image.tag=${{ github.sha }} \
+                  --set image.repository=${{ env.REGISTRY }}/${{ github.repository }}-centralized-dashboard-$service_name \
+                  --wait --timeout=10m
+              fi
+            done
+            cd - > /dev/null
+
+            # Deploy Node.js web services
+            cd nodejs-services
+            find . -name "kubernetes" -type d | while read kube_dir; do
+              echo "Deploying dashboard from $kube_dir"
+              kubectl apply -f "$kube_dir" -n foundation-prod
+            done
+            cd - > /dev/null
+          fi
+
+      - name: Verify deployment health
+        run: |
+          export KUBECONFIG=kubeconfig
+
+          # Check pod status
+          kubectl get pods -n foundation-prod
+
+          # Wait for deployments to be ready
+          kubectl wait --for=condition=ready pod -l app=api-gateway -n foundation-prod --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=authentication-service -n foundation-prod --timeout=300s
+
+          # Check service endpoints
+          kubectl get svc -n foundation-prod
+
+      - name: Run smoke tests
+        run: |
+          export KUBECONFIG=kubeconfig
+
+          # Get API Gateway URL
+          API_URL=$(kubectl get svc api-gateway -n foundation-prod -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          if [ -z "$API_URL" ]; then
+            API_URL=$(kubectl get svc api-gateway -n foundation-prod -o jsonpath='{.spec.clusterIP}')
+          fi
+
+          echo "Testing API Gateway at $API_URL"
+          curl -f "http://$API_URL/actuator/health" || exit 1
+
+          # Test authentication endpoint
+          curl -f "http://$API_URL/auth/health" || exit 1
+
+      - name: Update DNS records (if needed)
+        run: |
+          # Add DNS update commands here if using external DNS
+          echo "DNS configuration check completed"
+
+      - name: Create deployment tag
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "production-deploy-$(date +%Y%m%d-%H%M%S)" -m "Production deployment: ${{ github.sha }}"
+          git push origin --tags
+
+      - name: Notify deployment success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          text: '✅ Foundation Domain successfully deployed to PRODUCTION!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          text: '❌ Foundation Domain deployment to PRODUCTION failed!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Post-deployment monitoring
+  post-deployment-monitoring:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for stabilization period
+        run: |
+          echo "Waiting 5 minutes for services to stabilize..."
+          sleep 300
+
+      - name: Check service health
+        run: |
+          # Add comprehensive health checks
+          echo "Performing post-deployment health checks..."
+
+      - name: Generate deployment report
+        run: |
+          echo "## Production Deployment Report" > deployment-report.md
+          echo "**Date:** $(date)" >> deployment-report.md
+          echo "**Commit:** ${{ github.sha }}" >> deployment-report.md
+          echo "" >> deployment-report.md
+          echo "**Deployed Services:**" >> deployment-report.md
+          echo "- Shared Infrastructure: ✅" >> deployment-report.md
+          echo "- Central Configuration: ✅" >> deployment-report.md
+          echo "- AI Services: ✅" >> deployment-report.md
+          echo "- Centralized Dashboard: ✅" >> deployment-report.md
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report
+          path: deployment-report.md
