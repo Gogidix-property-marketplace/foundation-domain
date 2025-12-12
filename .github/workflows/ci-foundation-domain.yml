@@ -180,7 +180,7 @@ jobs:
     strategy:
       matrix:
         service-type: [java, nodejs, python]
-        max-parallel: 3
+      fail-fast: false
 
     steps:
     - name: Checkout
