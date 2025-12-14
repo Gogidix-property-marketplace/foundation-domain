@@ -2,12 +2,12 @@ name: NodeJS Services CI/CD Pipeline
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, development]
     paths:
       - '**/nodejs-services/**'
       - '.github/workflows/nodejs-services-ci.yml'
   pull_request:
-    branches: [main, dev]
+    branches: [main, development]
     paths:
       - '**/nodejs-services/**'
       - '.github/workflows/nodejs-services-ci.yml'
@@ -113,7 +113,7 @@ jobs:
     name: 🧪 E2E Tests
     runs-on: ubuntu-latest
     needs: build-and-test
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/development'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
